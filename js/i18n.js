@@ -773,6 +773,17 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    leg_air: "floor — walk here",
+    leg_stone: "stone — mine() it first",
+    leg_diamond: "diamond — mine() it first",
+    leg_tree: "tree — mine() it first",
+    leg_lava: "lava — place() a bridge",
+    leg_water: "water — place() a bridge",
+    leg_bridge: "bridge — walk here",
+    leg_wall: "bedrock — can't pass",
+    leg_target: "build() here",
+    leg_chest: "chest — the goal",
+    py_random_hint: "This world is random — it changes every time you press Run, and your code is tested on 3 worlds. Your code can't know in advance where the lava is: it has to look with ahead() and decide with if.",
     win_level: "Level {n} complete: {name}!",
     win_chapter: "Chapter {n} complete: {name}!",
     next_chapter: "Next chapter",
@@ -808,6 +819,17 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    leg_air: "suelo — camina aquí",
+    leg_stone: "piedra — primero mine()",
+    leg_diamond: "diamante — primero mine()",
+    leg_tree: "árbol — primero mine()",
+    leg_lava: "lava — place() un puente",
+    leg_water: "agua — place() un puente",
+    leg_bridge: "puente — camina aquí",
+    leg_wall: "roca madre — no se pasa",
+    leg_target: "build() aquí",
+    leg_chest: "cofre — la meta",
+    py_random_hint: "Este mundo es aleatorio — cambia cada vez que pulsas Ejecutar, y tu código se prueba en 3 mundos. Tu código no puede saber de antemano dónde está la lava: tiene que mirar con ahead() y decidir con if.",
     win_level: "¡Nivel {n} completado: {name}!",
     win_chapter: "¡Capítulo {n} completado: {name}!",
     next_chapter: "Siguiente capítulo",
@@ -843,6 +865,17 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    leg_air: "Boden — hier laufen",
+    leg_stone: "Stein — zuerst mine()",
+    leg_diamond: "Diamant — zuerst mine()",
+    leg_tree: "Baum — zuerst mine()",
+    leg_lava: "Lava — place() eine Brücke",
+    leg_water: "Wasser — place() eine Brücke",
+    leg_bridge: "Brücke — hier laufen",
+    leg_wall: "Grundgestein — kein Durchkommen",
+    leg_target: "hier build()",
+    leg_chest: "Truhe — das Ziel",
+    py_random_hint: "Diese Welt ist zufällig — sie ändert sich bei jedem Start, und dein Code wird in 3 Welten getestet. Dein Code kann vorher nicht wissen, wo die Lava ist: Er muss mit ahead() nachschauen und mit if entscheiden.",
     win_level: "Level {n} geschafft: {name}!",
     win_chapter: "Kapitel {n} geschafft: {name}!",
     next_chapter: "Nächstes Kapitel",

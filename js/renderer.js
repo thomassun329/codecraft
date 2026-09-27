@@ -247,5 +247,24 @@
     }
   }
 
+  // A single tile as a small canvas (for the legend under the map).
+  WorldView.tile = function (kind, size, target) {
+    if (!TEX) TEX = Sprites.buildTextures();
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    const tex = kind === 'lava' ? TEX.lava[0] : TEX[kind] || TEX.air;
+    if (kind === 'chest' || kind === 'bridge') ctx.drawImage(kind === 'bridge' ? TEX.lava[0] : TEX.air, 0, 0, size, size);
+    ctx.drawImage(tex, 0, 0, size, size);
+    if (target) {
+      ctx.strokeStyle = 'rgba(255, 220, 60, .9)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 2]);
+      ctx.strokeRect(3, 3, size - 6, size - 6);
+    }
+    return c;
+  };
+
   window.WorldView = WorldView;
 })();

@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=30');
+      this.worker = new Worker('js/py-worker.js?v=31');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -477,6 +477,7 @@
           <section class="col col-world">
             <div class="world-card">
               <div class="canvas-wrap"><canvas id="world"></canvas></div>
+              <div class="legend" id="legend"></div>
               <div class="world-bar">
                 <div class="inv" id="inv"></div>
                 <label class="speed">${t('speed')} <input type="range" id="speed" min="0.5" max="4" step="0.5" value="1.5"></label>
@@ -502,7 +503,23 @@
     const seed = () => Math.floor(Math.random() * 1e9);
     const mkLayout = () => L.layout(makeRng(seed()));
     let shown = mkLayout();
-    const showWorld = (layout) => { view.setWorld(new World(layout), D().skin); updateInv(); };
+    const showWorld = (layout) => { view.setWorld(new World(layout), D().skin); updateInv(); drawLegend(); };
+    // What each block means, for the blocks in this level only.
+    function drawLegend() {
+      const w = view.world, kinds = new Set();
+      w.grid.forEach((row) => row.forEach((c) => kinds.add(c)));
+      if (w.targets.length) kinds.add('target');
+      const order = ['air', 'stone', 'diamond', 'tree', 'lava', 'water', 'bridge', 'wall', 'target', 'chest'];
+      const box = $('#legend');
+      box.innerHTML = '';
+      order.filter((k) => kinds.has(k)).forEach((k) => {
+        const item = document.createElement('span');
+        item.className = 'legend-item';
+        item.appendChild(WorldView.tile(k === 'target' ? 'air' : k, 22, k === 'target'));
+        item.insertAdjacentHTML('beforeend', `<span>${t('leg_' + k)}</span>`);
+        box.appendChild(item);
+      });
+    }
     showWorld(shown);
     const onResize = () => view.resize();
     window.addEventListener('resize', onResize);
@@ -588,7 +605,8 @@
       if (warn) outLine(out, 'warn', '⚠️ ' + esc(warn));
 
       if (!PyRunner.ready) outLine(out, 'muted loading', '⏳ ' + t('loading_py'));
-      const layouts = L.tests > 1 ? Array.from({ length: L.tests }, mkLayout) : [mkLayout()];
+      // World 1 is always the one on screen, so code written for what he sees is tested on it.
+      const layouts = [shown, ...Array.from({ length: L.tests - 1 }, mkLayout)];
       let results;
       try {
         results = await PyRunner.run(code, layouts);
@@ -612,7 +630,8 @@
       const verdicts = results.map((r, i) => judge(L, layouts[i], r));
       const failIdx = verdicts.findIndex((v) => !v.ok);
       const showIdx = failIdx === -1 ? 0 : failIdx;
-      showWorld(layouts[showIdx]);
+      shown = layouts[showIdx];
+      showWorld(shown);
       if (L.tests > 1) outLine(out, 'muted', `🎲 ${t('world_n', { n: showIdx + 1 })} / ${L.tests}`);
 
       $('#skipBtn').hidden = false;
@@ -645,6 +664,7 @@
         }
         outLine(out, 'err', '❌ ' + msg.text);
         if (failIdx > 0 && verdicts[0].ok) outLine(out, 'warn', '🎲 ' + t('test_fail', { n: failIdx + 1 }));
+        else if (L.tests > 1 && !/\bif\b|\bwhile\b/.test(code)) outLine(out, 'warn', '🎲 ' + t('py_random_hint'));
         if (!v.error) Sound.play('fail');
         P.save();
       }

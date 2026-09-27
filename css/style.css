@@ -354,3 +354,6 @@ pre.example { margin: 4px 0 0; padding: 10px 12px; background: #101216; border: 
 .lab-icon { font-size: 28px; }
 .result-note { margin: 0 0 10px; padding: 8px 12px; border-radius: var(--r); font-size: 14px; background: rgba(79, 227, 224, .08); border: 1px solid rgba(79, 227, 224, .35); color: #bff6f4; }
 .feedback .err b { color: var(--gold); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-item canvas { image-rendering: pixelated; border: 1px solid #000; }
