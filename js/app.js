@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=5');
+      this.worker = new Worker('js/py-worker.js?v=7');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -797,15 +797,16 @@
       });
     }
 
-    // Compare by result, not by text: any correct query counts.
-    function compare(got, exp, quest) {
-      const g = got || { columns: [], values: [] };
+    // Compare by result, not by text, and when it's wrong, say *what kind* of wrong.
+    function compare(got, exp, quest, code) {
+      // No result set at all means zero rows; its columns are unknown, so skip that check.
+      const g = got || { columns: exp.columns, values: [] };
       if (g.columns.length !== exp.columns.length) return { ok: false, key: 'sql_cols', vars: { got: g.columns.length, exp: exp.columns.length } };
-      if (g.values.length !== exp.values.length) return { ok: false, key: 'sql_rows_n', vars: { got: g.values.length, exp: exp.values.length } };
       // Cells are sorted within each row so "health, name" counts the same as "name, health".
       const key = (r) => JSON.stringify(r.map((v) => (v === null ? 'NULL' : String(v))).sort());
       const a = g.values.map(key).sort(), b = exp.values.map(key).sort();
-      if (a.some((x, i) => x !== b[i])) return { ok: false, key: 'sql_values' };
+      const same = a.length === b.length && a.every((x, i) => x === b[i]);
+      if (!same) return diagnose(g, a, b, quest, code);
       if (quest.orderCol !== undefined) {
         const want = exp.columns[quest.orderCol].toLowerCase();
         const gi = g.columns.findIndex((c) => c.toLowerCase() === want);
@@ -815,6 +816,37 @@
         if (seqG.some((x, i) => x !== seqE[i])) return { ok: false, key: 'sql_order' };
       }
       return { ok: true };
+    }
+
+    function diagnose(g, gotKeys, expKeys, quest, code) {
+      const lits = (q) => [...q.matchAll(/'([^']*)'/g)].map((m) => m[1]);
+      const gotL = lits(code), expL = lits(quest.answer);
+      // 1. A text value in the filter that the quest doesn't ask for.
+      for (const w of gotL) {
+        if (expL.includes(w)) continue;
+        const cased = expL.find((e) => e.toLowerCase() === w.toLowerCase());
+        if (cased) return { ok: false, key: 'sql_case', vars: { got: esc(w), exp: esc(cased) } };
+        const missing = expL.find((e) => !gotL.includes(e));
+        if (missing) return { ok: false, key: 'sql_wrong_value', vars: { got: esc(w), exp: esc(missing) } };
+      }
+      // 2. Sorted the wrong way (or not at all) before a LIMIT.
+      if (/\border\s+by\b/i.test(quest.answer) && !/\border\s+by\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_order' };
+      if (/\bdesc\b/i.test(quest.answer) && !/\bdesc\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_desc' };
+      // 3. Compare the rows as sets: extra rows, missing rows, or just different.
+      const count = (arr) => arr.reduce((m, k) => m.set(k, (m.get(k) || 0) + 1), new Map());
+      const G = count(gotKeys), E = count(expKeys);
+      const within = (A, B) => [...A].every(([k, n]) => (B.get(k) || 0) >= n);
+      const vars = { got: gotKeys.length, exp: expKeys.length };
+      const hasWhere = /\bwhere\b/i.test(code), needsWhere = /\bwhere\b/i.test(quest.answer);
+      const needsLimit = /\blimit\b/i.test(quest.answer) && !/\blimit\b/i.test(code);
+      if (within(E, G) && gotKeys.length > expKeys.length) {
+        if (needsWhere && !hasWhere) return { ok: false, key: 'sql_no_where', vars };
+        if (needsLimit) return { ok: false, key: 'sql_need_limit', vars };
+        return { ok: false, key: 'sql_too_many', vars };
+      }
+      if (within(G, E) && gotKeys.length < expKeys.length) return { ok: false, key: 'sql_too_few', vars };
+      if (gotKeys.length !== expKeys.length) return { ok: false, key: 'sql_rows_n', vars };
+      return { ok: false, key: 'sql_values' };
     }
 
     async function run() {
@@ -844,7 +876,7 @@
       const exp = db.exec(quest.answer)[0];
       db.close();
       drawTable(res || null);
-      const c = compare(res, exp, quest);
+      const c = compare(res, exp, quest, code);
       if (!c.ok) {
         fb.innerHTML = `<p class="err">🤔 ${t(c.key, c.vars)}</p>`;
         E.lastError = { key: c.key, vars: c.vars };

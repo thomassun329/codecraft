@@ -407,6 +407,14 @@
   };
 
   Object.assign(S.en, {
+    sql_need_desc: 'Those are the smallest ones! ORDER BY sorts smallest first. Add DESC to put the biggest first.',
+    sql_need_order: 'LIMIT keeps the first rows — but first you need ORDER BY, so the right ones are at the top.',
+    sql_wrong_value: 'Your query looks for \'{got}\', but this quest is about \'{exp}\'. Read the quest again!',
+    sql_case: 'So close! SQL text must match exactly — you wrote \'{got}\', the Mobdex says \'{exp}\' (check the capitals).',
+    sql_no_where: 'You got all {got} mobs, but the answer has only {exp}. This quest needs a WHERE rule to keep only some of them.',
+    sql_need_limit: 'You got {got} rows, but the answer has only {exp}. Right order? Then use LIMIT to keep just the top ones.',
+    sql_too_many: 'You got {got} rows, but the answer has {exp}. You have extra rows — is your rule too loose? (Check &gt; vs &gt;=.)',
+    sql_too_few: 'You got {got} rows, but the answer has {exp}. Some rows are missing — is your rule too strict?',
     sort_tip: '👆 Click a column name to sort the table.',
     sort_view_only: 'Sorted by {col} — only the view. To sort the real result, use ORDER BY in your query.',
     parent_title: 'Parent view',
@@ -423,6 +431,14 @@
     p_mobs: 'Mobdex', p_reset: 'Reset all progress', p_reset_confirm: 'Really delete all progress on this computer?',
   });
   Object.assign(S.es, {
+    sql_need_desc: '¡Esos son los más pequeños! ORDER BY ordena de menor a mayor. Añade DESC para que el mayor vaya primero.',
+    sql_need_order: 'LIMIT se queda con las primeras filas — pero antes necesitas ORDER BY para que las correctas estén arriba.',
+    sql_wrong_value: 'Tu consulta busca \'{got}\', pero esta misión trata de \'{exp}\'. ¡Vuelve a leer la misión!',
+    sql_case: '¡Casi! En SQL el texto debe coincidir exactamente — escribiste \'{got}\', el Mobdex dice \'{exp}\' (revisa las mayúsculas).',
+    sql_no_where: 'Tienes las {got} criaturas, pero la respuesta solo tiene {exp}. Esta misión necesita una regla WHERE para quedarte solo con algunas.',
+    sql_need_limit: 'Tienes {got} filas, pero la respuesta solo tiene {exp}. ¿El orden está bien? Entonces usa LIMIT para quedarte solo con las primeras.',
+    sql_too_many: 'Tienes {got} filas, pero la respuesta tiene {exp}. Te sobran filas — ¿tu regla es demasiado amplia? (Revisa &gt; o &gt;=.)',
+    sql_too_few: 'Tienes {got} filas, pero la respuesta tiene {exp}. Faltan filas — ¿tu regla es demasiado estricta?',
     sort_tip: '👆 Haz clic en el nombre de una columna para ordenar la tabla.',
     sort_view_only: 'Ordenado por {col} — solo la vista. Para ordenar el resultado de verdad, usa ORDER BY en tu consulta.',
     parent_title: 'Vista para padres',
@@ -439,6 +455,14 @@
     p_mobs: 'Mobdex', p_reset: 'Borrar todo el progreso', p_reset_confirm: '¿Seguro que quieres borrar todo el progreso de este ordenador?',
   });
   Object.assign(S.de, {
+    sql_need_desc: 'Das sind die kleinsten! ORDER BY sortiert das Kleinste zuerst. Mit DESC kommt das Größte nach oben.',
+    sql_need_order: 'LIMIT behält die ersten Zeilen — aber vorher brauchst du ORDER BY, damit die richtigen oben stehen.',
+    sql_wrong_value: 'Deine Abfrage sucht nach \'{got}\', aber in dieser Aufgabe geht es um \'{exp}\'. Lies die Aufgabe noch mal!',
+    sql_case: 'Fast! In SQL muss Text genau stimmen — du hast \'{got}\' geschrieben, im Mobdex steht \'{exp}\' (achte auf Groß- und Kleinschreibung).',
+    sql_no_where: 'Du hast alle {got} Mobs, aber die Antwort hat nur {exp}. Diese Aufgabe braucht eine WHERE-Regel, damit nur manche übrig bleiben.',
+    sql_need_limit: 'Du hast {got} Zeilen, aber die Antwort hat nur {exp}. Stimmt die Reihenfolge? Dann nimm LIMIT, um nur die obersten zu behalten.',
+    sql_too_many: 'Du hast {got} Zeilen, aber die Antwort hat {exp}. Du hast zu viele — ist deine Regel zu locker? (Prüf &gt; oder &gt;=.)',
+    sql_too_few: 'Du hast {got} Zeilen, aber die Antwort hat {exp}. Es fehlen Zeilen — ist deine Regel zu streng?',
     sort_tip: '👆 Klick auf einen Spaltennamen, um die Tabelle zu sortieren.',
     sort_view_only: 'Sortiert nach {col} — nur die Ansicht. Um das echte Ergebnis zu sortieren, nimm ORDER BY in deiner Abfrage.',
     parent_title: 'Elternansicht',
