@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=18');
+      this.worker = new Worker('js/py-worker.js?v=23');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -210,6 +210,7 @@
     if (a === 'py' && PY_LEVELS.find((l) => l.id === b)) return pyScreen(main, b);
     if (a === 'sql' && SQL_LEVELS.find((l) => l.id === b)) return sqlScreen(main, b);
     if (a === 'mobdex') return mobdexScreen(main);
+    if (a === 'lab') return labScreen(main);
     if (a === 'parent') return parentScreen(main);
     homeScreen(main);
   }
@@ -244,6 +245,10 @@
         <div class="track track-sql">
           <div class="track-head"><span class="track-icon">🧪</span><div><h2>${t('track_sql')}</h2><p>${t('track_sql_desc')}</p></div></div>
           <div class="path">${SQL_LEVELS.map((l, i) => node(l, i, SQL_LEVELS, 'sql')).join('<span class="link"></span>')}</div>
+          <a class="mobdex-teaser lab-teaser" href="#/lab">
+            <span class="lab-icon">🧪</span>
+            <span><b>${t('lab_title')}</b><small>${t('lab_desc')}</small></span>
+          </a>
           <a class="mobdex-teaser" href="#/mobdex">
             <span class="teaser-faces" id="teaserFaces"></span>
             <span><b>📖 ${t('mobdex')}</b><small>${t('mobs_n', { n: found, total: MOBS.length })} · ${t('loot_n', { n: (D().items || []).length, total: ITEMS.length })}</small></span>
@@ -758,6 +763,82 @@
   const noStrings = (q) => q.replace(/'[^']*'/g, "''");
   const has = (q, re) => re.test(noStrings(q));
 
+  // SQLite errors, translated into what to do. `tables` = the tables in scope.
+  function sqlErrorText(msg, code, tables, inLab) {
+    let m;
+    const bare = noStrings(code);
+    const aliases = new Set([...bare.matchAll(/\bas\s+([a-z_]+)/gi), ...bare.matchAll(/\b(?:from|join)\s+[a-z_]+\s+(?:as\s+)?([a-z_]+)/gi)].map((x) => x[1].toLowerCase()));
+    if (has(code, /\bcase\b/i) && !has(code, /\bend\b/i)) return t('sqlerr_case_end');
+    if (has(code, /\bcase\b/i) && (bare.match(/\bwhen\b/gi) || []).length !== (bare.match(/\bthen\b/gi) || []).length) return t('sqlerr_case_then');
+    if ((m = msg.match(/no such column: (\S+)/))) {
+      const full = m[1], parts = full.split('.'), col = parts.pop(), pre = parts.pop();
+      if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) return t('sqlerr_alias_missing', { p: esc(pre), col: esc(col) });
+      if (SQL_VALUES.has(col.toLowerCase())) return t('sqlerr_column', { x: esc(col) }) + ' ' + t('sqlerr_text_quote');
+      const near = closest(col, SQL_ALL_COLS);
+      if (near && near !== col) return t('sqlerr_column_typo', { x: esc(full), fix: (pre ? pre + '.' : '') + near });
+      return t('sqlerr_column', { x: esc(full) });
+    }
+    if ((m = msg.match(/ambiguous column name: (\S+)/))) {
+      const col = m[1];
+      const inT = tables.filter((tb) => SQL_SCHEMA[tb].some(([c]) => c === col));
+      return t('sqlerr_ambiguous', { x: esc(col), opts: inT.map((tb) => `<code>${tb}.${esc(col)}</code>`).join(' / ') });
+    }
+    if ((m = msg.match(/no such table: (\S+)/))) return t(inLab ? 'sqlerr_table_lab' : 'sqlerr_table', { x: esc(m[1]), list: tables.map((tb) => `<code>${tb}</code>`).join(', ') });
+    if ((m = msg.match(/no such function: (\w+)/))) return t('sqlerr_function', { x: esc(m[1]), fix: closest(m[1], SQL_FUNCS, 3) || 'COUNT' });
+    if (/misuse of aggregate/.test(msg)) return t('sqlerr_aggregate');
+    if (/GROUP BY clause is required before HAVING|HAVING clause on a non-aggregate/i.test(msg)) return t('sqlerr_having_group');
+    if (/unrecognized token: "'/.test(msg)) return t('sqlerr_unterminated');
+    if (/,\s*from\b/i.test(bare)) return t('sqlerr_trailing_comma');
+    if (/\border\s+(?!by\b)/i.test(bare)) return t('sqlerr_order_by');
+    if (/\bgroup\s+(?!by\b)/i.test(bare)) return t('sqlerr_group_by');
+    const words = bare.match(/[A-Za-z_]+/g) || [];
+    for (const w of words) {
+      const lw = w.toLowerCase(), up = w.toUpperCase();
+      if (w.length < 3 || SQL_WORDS.includes(up) || SQL_ALL_COLS.includes(lw) || SQL_TABLE_NAMES.includes(lw) || aliases.has(lw)) continue;
+      const near = closest(up, SQL_WORDS);
+      if (near) return t('sqlerr_typo', { x: esc(w), fix: near });
+    }
+    if ((m = msg.match(/near "([^"]*)": syntax error/))) {
+      if (SQL_WORDS.includes(m[1].toUpperCase())) return t('sqlerr_order_parts', { x: esc(m[1]) });
+      return t('sqlerr_syntax', { x: esc(m[1]) });
+    }
+    if (/incomplete input/.test(msg)) return t('sqlerr_incomplete');
+    return t('sqlerr_other', { x: esc(msg) });
+  }
+
+  // Sortable results table. Clicking a header only re-sorts the view;
+  // quest answers are always checked on the query's own result.
+  function makeResultsView(wrap, labelEl) {
+    let shownRes = null, sortCol = -1, sortDir = 1;
+    function show(res) {
+      if (res !== undefined) { shownRes = res; sortCol = -1; sortDir = 1; }
+      res = shownRes;
+      if (!res) { wrap.innerHTML = `<div class="muted">${t('sql_rows', { n: 0 })}</div>`; labelEl.textContent = t('sql_rows', { n: 0 }); return; }
+      let rows = res.values.slice();
+      if (sortCol >= 0) {
+        rows.sort((a, b) => {
+          const x = a[sortCol], y = b[sortCol];
+          if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+          return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * sortDir;
+        });
+      }
+      rows = rows.slice(0, 200);
+      labelEl.textContent = t(res.values.length === 1 ? 'sql_row' : 'sql_rows', { n: res.values.length });
+      const arrow = (i) => (i === sortCol ? (sortDir === 1 ? '▲' : '▼') : '⇅');
+      wrap.innerHTML = `
+        <p class="sort-tip">${sortCol >= 0 ? t('sort_view_only', { col: esc(res.columns[sortCol]) }) : t('sort_tip')}</p>
+        <table><thead><tr>${res.columns.map((c, i) => `<th><button class="th-sort ${i === sortCol ? 'on' : ''}" data-col="${i}" title="${esc(t('sort_tip'))}">${esc(c)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead>
+        <tbody>${rows.map((r) => `<tr>${r.map((v, i) => `<td class="${typeof v === 'number' ? 'num' : ''} ${i === sortCol ? 'sorted' : ''}">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      $$('.th-sort', wrap).forEach((b) => b.onclick = () => {
+        const i = +b.dataset.col;
+        if (i === sortCol) sortDir = -sortDir; else { sortCol = i; sortDir = 1; }
+        Sound.play('click');
+        show();
+      });
+    }
+    return { show };
+  }
+
   function sqlStars(E, n) {
     const clean = E.quests.filter((x) => x.done && !x.solutionSeen).length;
     return clean === n ? 3 : clean >= Math.ceil((n * 2) / 3) ? 2 : 1;
@@ -882,77 +963,8 @@
       };
     };
 
-    // ---- errors from SQLite, translated into what to do
-    function sqlError(msg, code) {
-      let m;
-      const bare = noStrings(code);
-      const aliases = new Set([...bare.matchAll(/\bas\s+([a-z_]+)/gi), ...bare.matchAll(/\b(?:from|join)\s+[a-z_]+\s+(?:as\s+)?([a-z_]+)/gi)].map((x) => x[1].toLowerCase()));
-      if (has(code, /\bcase\b/i) && !has(code, /\bend\b/i)) return t('sqlerr_case_end');
-      if (has(code, /\bcase\b/i) && (bare.match(/\bwhen\b/gi) || []).length !== (bare.match(/\bthen\b/gi) || []).length) return t('sqlerr_case_then');
-      if ((m = msg.match(/no such column: (\S+)/))) {
-        const full = m[1], parts = full.split('.'), col = parts.pop(), pre = parts.pop();
-        if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) return t('sqlerr_alias_missing', { p: esc(pre), col: esc(col) });
-        if (SQL_VALUES.has(col.toLowerCase())) return t('sqlerr_column', { x: esc(col) }) + ' ' + t('sqlerr_text_quote');
-        const near = closest(col, SQL_ALL_COLS);
-        if (near && near !== col) return t('sqlerr_column_typo', { x: esc(full), fix: (pre ? pre + '.' : '') + near });
-        return t('sqlerr_column', { x: esc(full) });
-      }
-      if ((m = msg.match(/ambiguous column name: (\S+)/))) {
-        const col = m[1];
-        const inT = L.tables.filter((tb) => SQL_SCHEMA[tb].some(([c]) => c === col));
-        return t('sqlerr_ambiguous', { x: esc(col), opts: inT.map((tb) => `<code>${tb}.${esc(col)}</code>`).join(' / ') });
-      }
-      if ((m = msg.match(/no such table: (\S+)/))) return t('sqlerr_table', { x: esc(m[1]), list: L.tables.map((tb) => `<code>${tb}</code>`).join(', ') });
-      if ((m = msg.match(/no such function: (\w+)/))) return t('sqlerr_function', { x: esc(m[1]), fix: closest(m[1], SQL_FUNCS, 3) || 'COUNT' });
-      if (/misuse of aggregate/.test(msg)) return t('sqlerr_aggregate');
-      if (/GROUP BY clause is required before HAVING|HAVING clause on a non-aggregate/i.test(msg)) return t('sqlerr_having_group');
-      if (/unrecognized token: "'/.test(msg)) return t('sqlerr_unterminated');
-      if (/,\s*from\b/i.test(bare)) return t('sqlerr_trailing_comma');
-      if (/\border\s+(?!by\b)/i.test(bare)) return t('sqlerr_order_by');
-      if (/\bgroup\s+(?!by\b)/i.test(bare)) return t('sqlerr_group_by');
-      const words = bare.match(/[A-Za-z_]+/g) || [];
-      for (const w of words) {
-        const lw = w.toLowerCase(), up = w.toUpperCase();
-        if (w.length < 3 || SQL_WORDS.includes(up) || SQL_ALL_COLS.includes(lw) || SQL_TABLE_NAMES.includes(lw) || aliases.has(lw)) continue;
-        const near = closest(up, SQL_WORDS);
-        if (near) return t('sqlerr_typo', { x: esc(w), fix: near });
-      }
-      if ((m = msg.match(/near "([^"]*)": syntax error/))) {
-        if (SQL_WORDS.includes(m[1].toUpperCase())) return t('sqlerr_order_parts', { x: esc(m[1]) });
-        return t('sqlerr_syntax', { x: esc(m[1]) });
-      }
-      if (/incomplete input/.test(msg)) return t('sqlerr_incomplete');
-      return t('sqlerr_other', { x: esc(msg) });
-    }
-
-    // Clicking a header only re-sorts the view; answers are checked on the query's own result.
-    let shownRes = null, sortCol = -1, sortDir = 1;
-    function drawTable(res) {
-      if (res !== undefined) { shownRes = res; sortCol = -1; sortDir = 1; }
-      res = shownRes;
-      if (!res) { $('#results').innerHTML = `<div class="muted">${t('sql_rows', { n: 0 })}</div>`; $('#rowsLabel').textContent = t('sql_rows', { n: 0 }); return; }
-      let rows = res.values.slice();
-      if (sortCol >= 0) {
-        rows.sort((a, b) => {
-          const x = a[sortCol], y = b[sortCol];
-          if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-          return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * sortDir;
-        });
-      }
-      rows = rows.slice(0, 100);
-      $('#rowsLabel').textContent = t('sql_rows', { n: res.values.length });
-      const arrow = (i) => (i === sortCol ? (sortDir === 1 ? '▲' : '▼') : '⇅');
-      $('#results').innerHTML = `
-        <p class="sort-tip">${sortCol >= 0 ? t('sort_view_only', { col: esc(res.columns[sortCol]) }) : t('sort_tip')}</p>
-        <table><thead><tr>${res.columns.map((c, i) => `<th><button class="th-sort ${i === sortCol ? 'on' : ''}" data-col="${i}" title="${esc(t('sort_tip'))}">${esc(c)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead>
-        <tbody>${rows.map((r) => `<tr>${r.map((v, i) => `<td class="${typeof v === 'number' ? 'num' : ''} ${i === sortCol ? 'sorted' : ''}">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-      $$('.th-sort').forEach((b) => b.onclick = () => {
-        const i = +b.dataset.col;
-        if (i === sortCol) sortDir = -sortDir; else { sortCol = i; sortDir = 1; }
-        Sound.play('click');
-        drawTable();
-      });
-    }
+    const results = makeResultsView($('#results'), $('#rowsLabel'));
+    const drawTable = (res) => results.show(res);
 
     // Which columns appear in one clause (WHERE … / ORDER BY …) of a query.
     const colsIn = (q, clause) => {
@@ -1103,7 +1115,7 @@
         res = out[out.length - 1];
       } catch (e) {
         db.close();
-        const text = sqlError(e.message, code);
+        const text = sqlErrorText(e.message, code, L.tables);
         fb.innerHTML = `<p class="err">❌ ${text}</p>`;
         E.lastError = { key: 'sqlerr_other', vars: { x: text.replace(/<[^>]+>/g, '') } };
         Sound.play('fail');
@@ -1165,6 +1177,136 @@
     setTimeout(() => cm.refresh(), 0);
   }
 
+  // ---------------- Free Lab: query anything, no grading ----------------
+  const LAB_IDEAS = 6;
+
+  function labScreen(main) {
+    const E = P.level('lab');
+    E.lastPlayed = Date.now();
+    const hist = D().labHistory || (D().labHistory = []);
+    P.save();
+    let db = null;
+
+    main.innerHTML = `
+      <div class="level lab">
+        <div class="lv-top">
+          <a class="btn ghost small" href="#/">← ${t('back')}</a>
+          <h1><span class="lv-num sql">🧪</span>${t('lab_title')}</h1>
+          <button class="btn ghost small" id="resetDb">↺ ${t('lab_reset')}</button>
+        </div>
+        <p class="muted lab-sub">${t('lab_sub')}</p>
+        <div class="lv-grid">
+          <section class="col col-info">
+            <div class="card"><h3>🔭 ${t('lab_ideas')}</h3><div class="ideas" id="ideas"></div></div>
+            <div class="card schema"><h3>🗂 ${t('tables')}</h3><p class="muted small-note">👆 ${t('lab_peek')}</p><div id="labTables"></div></div>
+          </section>
+          <section class="col col-code">
+            <div class="editor sql lab-editor"><textarea id="code"></textarea></div>
+            <div class="actions">
+              <button class="btn run" id="runBtn">▶ ${t('run')}</button>
+              <span class="muted small-note">⌘ + Enter</span>
+            </div>
+            <div class="feedback" id="fb"></div>
+            <div class="card"><h3>🕘 ${t('lab_history')}</h3><div class="history" id="history"></div></div>
+          </section>
+          <section class="col col-world">
+            <div class="card results"><h3>📊 <span id="rowsLabel">${t('output')}</span></h3><div class="table-wrap" id="results"><div class="muted">${t('output_empty')}</div></div></div>
+          </section>
+        </div>
+      </div>`;
+
+    const results = makeResultsView($('#results'), $('#rowsLabel'));
+    const cm = makeEditor($('#code'), 'text/x-sqlite', E.code != null ? E.code : 'SELECT * FROM hunts LIMIT 10', () => run(), (v) => {
+      E.code = v; clearTimeout(saveT); saveT = setTimeout(() => P.save(), 800);
+    });
+    let saveT;
+
+    // Tables list is read from the live database, so tables he creates show up too.
+    function drawTables() {
+      const res = db.exec("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY rowid");
+      const names = res.length ? res[0].values.map((r) => r[0]) : [];
+      $('#labTables').innerHTML = names.map((tb) => {
+        const cols = db.exec(`PRAGMA table_info(${tb})`)[0];
+        const own = !SQL_TABLE_NAMES.includes(tb);
+        return `<div class="schema-table"><button class="table-peek ${own ? 'own' : ''}" data-peek="${esc(tb)}"><code>${esc(tb)}</code>${own ? ` <small>✨ ${t('lab_yours')}</small>` : ''}</button>
+          <div class="schema-cols">${cols ? cols.values.map((c) => `<span><code>${esc(c[1])}</code><small>${esc(c[2] || '')}</small></span>`).join('') : ''}</div></div>`;
+      }).join('');
+      $$('[data-peek]').forEach((b) => b.onclick = () => { cm.setValue(`SELECT * FROM ${b.dataset.peek} LIMIT 10`); run(); });
+    }
+
+    function drawHistory() {
+      $('#history').innerHTML = hist.length
+        ? hist.map((q, i) => `<button class="hist-item" data-h="${i}"><code>${esc(q.length > 90 ? q.slice(0, 90) + '…' : q)}</code></button>`).join('')
+        : `<div class="muted">${t('lab_history_empty')}</div>`;
+      $$('[data-h]').forEach((b) => b.onclick = () => { cm.setValue(hist[+b.dataset.h]); cm.focus(); });
+    }
+
+    $('#ideas').innerHTML = Array.from({ length: LAB_IDEAS }, (_, i) => `<button class="idea" data-idea="${i + 1}">${t('lab_idea_' + (i + 1))}</button>`).join('');
+    $$('[data-idea]').forEach((b) => b.onclick = () => {
+      cm.setValue(`-- ${b.textContent.replace(/<[^>]+>/g, '')}\n`);
+      cm.setCursor(1, 0);
+      cm.focus();
+      Sound.play('click');
+    });
+
+    function reset() {
+      if (db) db.close();
+      db = freshDB();
+      drawTables();
+    }
+
+    $('#resetDb').onclick = () => {
+      reset();
+      $('#fb').innerHTML = `<p class="ok">↺ ${t('lab_reset_done')}</p>`;
+      Sound.play('place');
+    };
+
+    async function run() {
+      const fb = $('#fb');
+      const code = cm.getValue().trim();
+      if (!code.replace(/--.*$/gm, '').trim()) { fb.innerHTML = `<p class="warn">${t('sql_empty')}</p>`; return; }
+      await sqlReady;
+      if (!db) reset();
+      E.attempts = (E.attempts || 0) + 1;
+      E.lastPlayed = Date.now();
+      const i = hist.indexOf(code);
+      if (i !== -1) hist.splice(i, 1);
+      hist.unshift(code);
+      hist.length = Math.min(hist.length, 20);
+      P.save();
+      drawHistory();
+      try {
+        const out = db.exec(code);
+        const writes = /\b(insert|update|delete|replace)\b/i.test(noStrings(code));
+        const changed = writes ? db.getRowsModified() : 0;
+        if (out.length) {
+          results.show(out[out.length - 1]);
+          fb.innerHTML = '';
+        } else {
+          results.show(null);
+          fb.innerHTML = `<p class="ok">✅ ${changed ? t(changed === 1 ? 'lab_changed_1' : 'lab_changed', { n: changed }) : t('lab_done')}</p>`;
+        }
+        if (/\b(create|drop|alter)\b/i.test(noStrings(code))) drawTables();
+        Sound.play('click');
+      } catch (e) {
+        const live = (db.exec("SELECT name FROM sqlite_master WHERE type = 'table'")[0] || { values: [] }).values.map((r) => r[0]);
+        results.show(null);
+        fb.innerHTML = `<p class="err">❌ ${sqlErrorText(e.message, code, live, true)}</p>`;
+        Sound.play('fail');
+      }
+    }
+
+    $('#runBtn').onclick = () => run();
+    sqlReady.then(() => { reset(); });
+    drawHistory();
+
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') { E.timeSec = (E.timeSec || 0) + 5; P.save(); }
+    }, 5000);
+    cleanup = () => { clearInterval(timer); if (db) db.close(); P.save(); };
+    setTimeout(() => cm.refresh(), 0);
+  }
+
   // ---------------- Mobdex ----------------
   function mobdexScreen(main) {
     const found = D().mobs;
@@ -1221,7 +1363,7 @@
     const d = D();
     const levels = ALL_LEVELS();
     const doneN = levels.filter((l) => d.levels[l.id] && d.levels[l.id].done).length;
-    const totalSec = levels.reduce((s, l) => s + ((d.levels[l.id] || {}).timeSec || 0), 0);
+    const totalSec = levels.reduce((s, l) => s + ((d.levels[l.id] || {}).timeSec || 0), 0) + ((d.levels.lab || {}).timeSec || 0);
     const xp = totalXP();
     const errText = (e) => {
       if (!e) return '—';
@@ -1247,6 +1389,13 @@
         <td class="small">${e && e.lastPlayed ? new Date(e.lastPlayed).toLocaleString(I18N.lang) : '—'}</td>
       </tr>`;
     };
+    const labRow = () => {
+      const e = d.levels.lab;
+      return `<tr><td><b>🧪 ${t('lab_title')}</b></td><td>${e && e.attempts ? `<span class="pill started">${t('lab_used')}</span>` : `<span class="pill not">${t('p_not')}</span>`}</td>
+        <td>—</td><td class="num">${e ? e.attempts || 0 : 0}</td><td class="num">${fmtTime(e && e.timeSec)}</td><td class="num">—</td><td>—</td>
+        <td class="small">${(d.labHistory || []).slice(0, 3).map((q) => `<code>${esc(q.length > 60 ? q.slice(0, 60) + '…' : q)}</code>`).join('<br>') || '—'}</td>
+        <td class="small">${e && e.lastPlayed ? new Date(e.lastPlayed).toLocaleString(I18N.lang) : '—'}</td></tr>`;
+    };
     const source = Cloud.user ? t('parent_cloud', { email: esc(Cloud.user.email) }) : t('parent_local');
     main.innerHTML = `
       <div class="page parent">
@@ -1262,7 +1411,7 @@
         </div>
         <div class="card"><div class="table-wrap"><table class="ptable">
           <thead><tr><th>${t('p_level')}</th><th>${t('p_status')}</th><th>${t('p_stars')}</th><th>${t('p_runs')}</th><th>${t('p_time')}</th><th>${t('p_hints')}</th><th>${t('p_peeked')}</th><th>${t('p_last_err')}</th><th>${t('p_last')}</th></tr></thead>
-          <tbody>${PY_LEVELS.map((l, i) => row(l, i, 'Python')).join('')}${SQL_LEVELS.map((l, i) => row(l, i, 'SQL')).join('')}</tbody>
+          <tbody>${PY_LEVELS.map((l, i) => row(l, i, 'Python')).join('')}${SQL_LEVELS.map((l, i) => row(l, i, 'SQL')).join('')}${labRow()}</tbody>
         </table></div></div>
         <button class="linkish danger" id="resetAll">${t('p_reset')}</button>
       </div>`;

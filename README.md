@@ -14,6 +14,9 @@ Available in English, Spanish and German. Plain static site: no build step, no n
   7 👑 The Diamond Thief (guided case: subqueries, WITH) · 8 ⭐ Leaderboards (RANK, PARTITION BY, running totals).
   Answers are checked by result, not by text, so any correct query counts; wrong ones get a specific explanation.
   Solved quests unlock mob and loot cards.
+- **🧪 Free Lab** (`#/lab`): ungraded SQL playground over every table. Peek into tables, write anything
+  (including CREATE / INSERT / UPDATE / DELETE — "Reset database" restores the originals), query history,
+  and 6 open "ideas to explore". Friendly error messages and sortable results as in the quests.
 - **Game layer**: XP, ranks (Wood → Netherite), 3 stars per level, unlockable helmets, sound, confetti.
 - **Parent view** (`#/parent`): levels done, time, runs, hints, solution peeks, last problem, "may be stuck" flag.
 

@@ -335,3 +335,20 @@ pre.example { margin: 4px 0 0; padding: 10px 12px; background: #101216; border: 
 .mob-card.rarity-uncommon { border-top-color: var(--grass); }
 .mob-card.rarity-rare { border-top-color: #4f8cff; }
 .mob-card.rarity-epic { border-top-color: var(--purple); }
+
+/* Free Lab */
+.lab-sub { margin: -8px 0 16px; }
+.small-note { font-size: 12.5px; margin: 0 0 8px; }
+.lab-editor .CodeMirror { height: 220px; }
+.table-peek { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; margin: 0 0 4px -6px; border-radius: 3px; }
+.table-peek:hover { background: rgba(255, 224, 138, .12); }
+.table-peek small { color: var(--diamond); font-size: 11px; }
+.ideas { display: flex; flex-direction: column; gap: 6px; }
+.idea { text-align: left; background: var(--panel-2); color: var(--text); border: 2px solid var(--edge); border-radius: var(--r); padding: 8px 10px; font: 600 14px var(--body); cursor: pointer; }
+.idea:hover { border-color: var(--purple); }
+.history { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+.hist-item { all: unset; box-sizing: border-box; display: block; flex-shrink: 0; width: 100%; line-height: 1.4; cursor: pointer; padding: 5px 8px; border-radius: 3px; background: #101216; border: 1px solid var(--edge); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-item:hover { border-color: var(--purple); }
+.hist-item code { background: none; padding: 0; color: #d6d6d6; }
+.lab-teaser { margin-top: 12px; }
+.lab-icon { font-size: 28px; }
