@@ -67,6 +67,8 @@
         this.onAction = onAction;
         this.onDone = resolve;
         this.current = null;
+        // Frames don't tick in a hidden tab, so don't wait on them.
+        if (!actions.length || document.hidden) this.skip();
       });
     }
 

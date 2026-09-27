@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=8');
+      this.worker = new Worker('js/py-worker.js?v=9');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -324,24 +324,86 @@
     out.scrollTop = out.scrollHeight;
   }
 
-  function pyErrorMessage(err) {
-    const pre = err.line ? t('err_line', { line: err.line }) : '';
-    if (err.kind === 'GameStop') return { key: 'fatal_' + err.msg, text: pre + t('fatal_' + err.msg) };
-    if (err.kind === 'NameError') {
-      const name = (err.msg.match(/'([^']+)'/) || [])[1] || '?';
-      return { key: 'err_NameError', vars: { name }, text: pre + t('err_NameError', { name }) };
+  const PY_WORDS = ['move', 'turn_left', 'turn_right', 'mine', 'place', 'build', 'ahead', 'say', 'print', 'range'];
+  const BLOCK_WORDS = ['lava', 'stone', 'diamond', 'chest', 'air', 'water', 'wall', 'bridge', 'tree', 'planks'];
+
+  // Edit distance (with swapped letters counting as one) to suggest "did you mean".
+  function editDist(a, b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
     }
-    const k = err.kind === 'TabError' ? 'IndentationError' : err.kind;
-    const key = 'err_' + k;
-    const msg = I18N.t(key) !== key ? t(key) : t('err_other', { kind: err.kind });
-    return { key: I18N.t(key) !== key ? key : 'err_other', vars: { kind: err.kind }, text: pre + msg + ` <span class="raw">(${esc(err.kind)}: ${esc(err.msg)})</span>` };
+    return d[a.length][b.length];
+  }
+  function closest(word, list, max) {
+    let best = null, bd = (max || 2) + 1;
+    list.forEach((w) => { const x = editDist(word.toLowerCase(), w.toLowerCase()); if (x < bd) { bd = x; best = w; } });
+    return best;
   }
 
+  function pyErrorMessage(err, code) {
+    const src = err.line ? (code.split('\n')[err.line - 1] || '').trim() : '';
+    const short = src.length > 40 ? src.slice(0, 40) + '…' : src;
+    const pre = err.line ? (short ? t('err_line_src', { line: err.line, src: esc(short) }) : t('err_line', { line: err.line })) : '';
+    const out = (key, vars) => ({
+      key, vars,
+      text: pre + t(key, vars) + (err.kind === 'GameStop' ? '' : ` <span class="raw">(${esc(err.kind)}: ${esc(err.msg)})</span>`),
+    });
+    const m = err.msg || '';
+    let x;
+    if (err.kind === 'GameStop') return out('fatal_' + m);
+    if (err.kind === 'NameError') {
+      const name = (m.match(/'([^']+)'/) || [])[1] || '?';
+      const lower = name.toLowerCase();
+      if (lower !== name && PY_WORDS.includes(lower)) return out('py_name_case', { name: esc(name) + '()', fix: lower + '()' });
+      const near = closest(name, PY_WORDS);
+      if (near && near !== name) return out('py_name_typo', { name: esc(name), fix: near + '()' });
+      if (/^\w+$/.test(name) && new RegExp('^\\s*' + name + '\\s*=[^=]', 'm').test(code)) return out('py_name_before', { name: esc(name) });
+      if (BLOCK_WORDS.includes(lower)) return out('py_name_quote', { name: esc(name) });
+      return out('py_name_unknown', { name: esc(name) });
+    }
+    if (err.kind === 'IndentationError' || err.kind === 'TabError') {
+      if (/expected an indented block/.test(m)) return out('py_indent_expected');
+      if (/unexpected indent/.test(m)) return out('py_indent_unexpected');
+      return out('py_indent_mismatch');
+    }
+    if (err.kind === 'SyntaxError') {
+      if (/was never closed/.test(m)) return out('py_never_closed');
+      if (/expected ':'/.test(m)) return out('py_expected_colon');
+      if (/unterminated string/.test(m)) return out('py_unterminated');
+      if ((x = m.match(/unmatched '(.)'/))) return out('py_unmatched', { x: esc(x[1]) });
+      if (/meant '=='/.test(m)) return out('py_double_equals');
+      if (/forgot a comma/.test(m)) return out('py_comma');
+      if (/=!/.test(src)) return out('py_not_equal');
+      if (/^for\s+\w+\s+range/.test(src)) return out('py_for_in');
+      if ((x = src.match(/^(If|For|While|Def|Else|Elif)\b/))) return out('py_keyword_case', { kw: x[1], fix: x[1].toLowerCase() });
+      return out('py_syntax_line');
+    }
+    if (err.kind === 'TypeError') {
+      if ((x = m.match(/(\w+)\(\) takes 0 positional arguments/))) return out('py_args_none', { cmd: esc(x[1]) });
+      if ((x = m.match(/(\w+)\(\) missing \d+ required/))) return out('py_args_missing', { cmd: esc(x[1]) });
+      if (/cannot be interpreted as an integer/.test(m)) return out('py_range_text');
+      if (/concatenate|unsupported operand/.test(m)) return out('py_add_mixed');
+      if (/object is not callable/.test(m)) return out('py_not_callable');
+      return out('err_TypeError');
+    }
+    if (err.kind === 'RecursionError') return out('py_recursion');
+    if (err.kind === 'ZeroDivisionError') return out('err_ZeroDivisionError');
+    return out('err_other', { kind: esc(err.kind) });
+  }
+
+  // Commands written without () don't fail in Python — they silently do nothing.
   function lint(code) {
-    const cmds = ['move', 'turn_left', 'turn_right', 'mine', 'place', 'build'];
+    const cmds = ['move', 'turn_left', 'turn_right', 'mine', 'place', 'build', 'ahead', 'say'];
     const lines = code.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].trim().match(/^([a-z_]+)$/);
+      const line = lines[i].replace(/#.*$/, '').replace(/"[^"]*"|'[^']*'/g, '""');
+      if (/^\s*def\s/.test(line)) continue;
+      const m = line.match(/\b(move|turn_left|turn_right|mine|place|build|ahead|say)\b(?!\s*\()/);
       if (m && cmds.includes(m[1])) return t('lint_parens', { line: i + 1, cmd: m[1] });
     }
     return null;
@@ -357,7 +419,12 @@
     }
     if (result.error) return { ok: false, error: result.error };
     if (fatal) return { ok: false, error: { kind: 'GameStop', msg: fatal } };
-    return level.check(w);
+    const v = level.check(w);
+    if (!v.ok && v.why === 'not_at_chest') {
+      w.grid.forEach((row, y) => row.forEach((c, x) => { if (c === 'chest') v.n = Math.abs(x - w.x) + Math.abs(y - w.y); }));
+      if (v.n === 1) v.why = 'one_more';
+    }
+    return v;
   }
 
   // ---------------- Python level screen ----------------
@@ -486,7 +553,18 @@
     $('#runBtn').onclick = () => run();
     $('#skipBtn').onclick = () => view.skip();
 
+    // Whatever happens inside, the Run button must never stay stuck.
     async function run() {
+      if (busy) return;
+      try { await runOnce(); } catch (e) {
+        console.error('run failed', e);
+        outLine($('#out'), 'err', '❌ ' + esc(String(e && e.message || e)));
+        busy = false;
+        finish();
+      }
+    }
+
+    async function runOnce() {
       if (busy) return;
       busy = true;
       const code = cm.getValue();
@@ -551,11 +629,11 @@
       } else {
         let msg;
         if (v.error) {
-          msg = pyErrorMessage(v.error);
+          msg = pyErrorMessage(v.error, code);
           E.lastError = { key: msg.key, vars: msg.vars };
         } else {
           msg = { text: t('why_' + v.why, { said: esc(v.said || ''), n: v.n }) };
-          E.lastError = { key: 'why_' + v.why };
+          E.lastError = { key: 'why_' + v.why, vars: { n: v.n, said: v.said } };
         }
         outLine(out, 'err', '❌ ' + msg.text);
         if (failIdx > 0 && verdicts[0].ok) outLine(out, 'warn', '🎲 ' + t('test_fail', { n: failIdx + 1 }));
@@ -774,15 +852,37 @@
       if (hintIdx === tx.hints.length) $('#hintBtn').disabled = true;
     };
 
-    function sqlError(msg) {
+    const SQL_WORDS = ['SELECT', 'FROM', 'WHERE', 'ORDER', 'BY', 'LIMIT', 'DESC', 'ASC', 'AND', 'OR', 'NOT', 'COUNT'];
+    const COLS = MOB_SCHEMA.map(([c]) => c);
+
+    function sqlError(msg, code) {
       let m;
+      const bare = code.replace(/'[^']*'/g, "''");
       const values = new Set(MOBS.flatMap((x) => [x.type, x.home, x.loot, x.name.toLowerCase()]));
       if ((m = msg.match(/no such column: (\S+)/))) {
-        const tip = values.has(m[1].toLowerCase()) ? ' ' + t('sqlerr_text_quote') : '';
-        return t('sqlerr_column', { x: esc(m[1]) }) + tip;
+        const x = m[1];
+        if (values.has(x.toLowerCase())) return t('sqlerr_column', { x: esc(x) }) + ' ' + t('sqlerr_text_quote');
+        const near = closest(x, COLS);
+        if (near) return t('sqlerr_column_typo', { x: esc(x), fix: near });
+        return t('sqlerr_column', { x: esc(x) });
       }
       if ((m = msg.match(/no such table: (\S+)/))) return t('sqlerr_table', { x: esc(m[1]) });
-      if ((m = msg.match(/near "([^"]*)": syntax error/))) return t('sqlerr_syntax', { x: esc(m[1]) });
+      if ((m = msg.match(/no such function: (\w+)/))) return t('sqlerr_function', { x: esc(m[1]), fix: closest(m[1], ['COUNT', 'MAX', 'MIN', 'SUM', 'AVG'], 3) || 'COUNT' });
+      if (/unrecognized token: "'/.test(msg)) return t('sqlerr_unterminated');
+      if (/,\s*from\b/i.test(bare)) return t('sqlerr_trailing_comma');
+      if (/\border\s+(?!by\b)/i.test(bare)) return t('sqlerr_order_by');
+      // A misspelled keyword anywhere (e.g. FORM, WHER, DSC), ignoring real column/table names.
+      const words = bare.match(/[A-Za-z_]+/g) || [];
+      for (const w of words) {
+        const up = w.toUpperCase();
+        if (w.length < 3 || SQL_WORDS.includes(up) || COLS.includes(w.toLowerCase()) || w.toLowerCase() === 'mobs') continue;
+        const near = closest(up, SQL_WORDS);
+        if (near) return t('sqlerr_typo', { x: esc(w), fix: near });
+      }
+      if ((m = msg.match(/near "([^"]*)": syntax error/))) {
+        if (SQL_WORDS.includes(m[1].toUpperCase())) return t('sqlerr_order_parts', { x: esc(m[1]) });
+        return t('sqlerr_syntax', { x: esc(m[1]) });
+      }
       if (/incomplete input/.test(msg)) return t('sqlerr_incomplete');
       return t('sqlerr_other', { x: esc(msg) });
     }
@@ -816,15 +916,25 @@
       });
     }
 
+    // Which mob columns appear in a clause (WHERE … / ORDER BY …) of a query.
+    const colsIn = (q, clause) => {
+      const m = q.replace(/'[^']*'/g, "''").match(new RegExp('\\b' + clause + '\\b([\\s\\S]*?)(\\border\\b|\\blimit\\b|$)', 'i'));
+      return m ? COLS.filter((c) => new RegExp('\\b' + c + '\\b', 'i').test(m[1])) : [];
+    };
+
     // Compare by result, not by text, and when it's wrong, say *what kind* of wrong.
     function compare(got, exp, quest, code) {
       // No result set at all means zero rows; its columns are unknown, so skip that check.
       const g = got || { columns: exp.columns, values: [] };
-      if (g.columns.length !== exp.columns.length) return { ok: false, key: 'sql_cols', vars: { got: g.columns.length, exp: exp.columns.length } };
+      const norm = (c) => c.toLowerCase().replace(/\s+/g, '');
+      const namesMatch = g.columns.length === exp.columns.length && exp.columns.every((c) => g.columns.map(norm).includes(norm(c)));
+      if (g.columns.length !== exp.columns.length) return columnProblem(g, exp, code);
       // Cells are sorted within each row so "health, name" counts the same as "name, health".
       const key = (r) => JSON.stringify(r.map((v) => (v === null ? 'NULL' : String(v))).sort());
       const a = g.values.map(key).sort(), b = exp.values.map(key).sort();
       const same = a.length === b.length && a.every((x, i) => x === b[i]);
+      // Different column names but identical data (e.g. an alias with AS) still counts.
+      if (!same && !namesMatch) return columnProblem(g, exp, code);
       if (!same) return diagnose(g, a, b, quest, code);
       if (quest.orderCol !== undefined) {
         const want = exp.columns[quest.orderCol].toLowerCase();
@@ -832,9 +942,32 @@
         const col = gi === -1 ? quest.orderCol : gi;
         const seqG = g.values.map((r) => String(r[col]));
         const seqE = exp.values.map((r) => String(r[quest.orderCol]));
-        if (seqG.some((x, i) => x !== seqE[i])) return { ok: false, key: 'sql_order' };
+        if (seqG.some((x, i) => x !== seqE[i])) {
+          const want = colsIn(quest.answer, 'order\\s+by'), have = colsIn(code, 'order\\s+by');
+          if (!/\border\s+by\b/i.test(code)) return { ok: false, key: 'sql_order_missing' };
+          const wrong = have.find((c) => !want.includes(c));
+          if (wrong) return { ok: false, key: 'sql_order_col', vars: { got: wrong, exp: want[0] } };
+          if (/\bdesc\b/i.test(quest.answer) && !/\bdesc\b/i.test(code)) return { ok: false, key: 'sql_need_desc_all' };
+          return { ok: false, key: 'sql_order' };
+        }
       }
       return { ok: true };
+    }
+
+    function columnProblem(g, exp, code) {
+      const norm = (c) => c.toLowerCase().replace(/\s+/g, '');
+      const G = g.columns.map(norm), X = exp.columns.map(norm);
+      const list = (arr) => arr.map((c) => `<code>${esc(c)}</code>`).join(', ');
+      if (X.some((c) => c.startsWith('count(')) && !G.some((c) => c.startsWith('count('))) return { ok: false, key: 'sql_need_count' };
+      if (/select\s+\*/i.test(code) && !X.includes('*')) return { ok: false, key: 'sql_star', vars: { n: G.length, cols: list(exp.columns) } };
+      const missing = exp.columns.filter((c) => !G.includes(norm(c)));
+      const extra = g.columns.filter((c) => !X.includes(norm(c)));
+      const clause = (code.match(/select\s+([\s\S]*?)\s+from\b/i) || [])[1] || '';
+      if (missing.length && G.length < X.length && /[a-z_]\s+[a-z_]/i.test(clause) && !/\bas\b/i.test(clause)) return { ok: false, key: 'sql_missing_comma' };
+      if (missing.length && extra.length) return { ok: false, key: 'sql_swap_cols', vars: { need: list(missing), have: list(extra) } };
+      if (missing.length) return { ok: false, key: 'sql_missing_col', vars: { cols: list(missing) } };
+      if (extra.length) return { ok: false, key: 'sql_extra_col', vars: { cols: list(extra) } };
+      return { ok: false, key: 'sql_cols', vars: { got: g.columns.length, exp: exp.columns.length } };
     }
 
     function diagnose(g, gotKeys, expKeys, quest, code) {
@@ -848,10 +981,21 @@
         const missing = expL.find((e) => !gotL.includes(e));
         if (missing) return { ok: false, key: 'sql_wrong_value', vars: { got: esc(w), exp: esc(missing) } };
       }
-      // 2. Sorted the wrong way (or not at all) before a LIMIT.
+      // 2. The rule checks a different column than the quest is about.
+      for (const clause of ['where', 'order\\s+by']) {
+        const want = colsIn(quest.answer, clause), have = colsIn(code, clause);
+        const wrong = have.find((c) => !want.includes(c));
+        if (want.length && wrong) return { ok: false, key: clause === 'where' ? 'sql_where_col' : 'sql_order_col', vars: { got: wrong, exp: want[0] } };
+      }
+      // 3. A count that came out as the wrong number.
+      if (g.values.length === 1 && expKeys.length === 1 && g.columns.length === 1) {
+        const hasW = /\bwhere\b/i.test(code), needW = /\bwhere\b/i.test(quest.answer);
+        return { ok: false, key: needW && !hasW ? 'sql_count_all' : 'sql_count_wrong', vars: { got: esc(g.values[0][0]) } };
+      }
+      // 4. Sorted the wrong way (or not at all) before a LIMIT.
       if (/\border\s+by\b/i.test(quest.answer) && !/\border\s+by\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_order' };
       if (/\bdesc\b/i.test(quest.answer) && !/\bdesc\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_desc' };
-      // 3. Compare the rows as sets: extra rows, missing rows, or just different.
+      // 5. Compare the rows as sets: extra rows, missing rows, or just different.
       const count = (arr) => arr.reduce((m, k) => m.set(k, (m.get(k) || 0) + 1), new Map());
       const G = count(gotKeys), E = count(expKeys);
       const within = (A, B) => [...A].every(([k, n]) => (B.get(k) || 0) >= n);
@@ -863,7 +1007,10 @@
         if (needsLimit) return { ok: false, key: 'sql_need_limit', vars };
         return { ok: false, key: 'sql_too_many', vars };
       }
-      if (within(G, E) && gotKeys.length < expKeys.length) return { ok: false, key: 'sql_too_few', vars };
+      if (within(G, E) && gotKeys.length < expKeys.length) {
+        if (!needsWhere && hasWhere) return { ok: false, key: 'sql_no_where_needed', vars };
+        return { ok: false, key: 'sql_too_few', vars };
+      }
       if (gotKeys.length !== expKeys.length) return { ok: false, key: 'sql_rows_n', vars };
       return { ok: false, key: 'sql_values' };
     }
@@ -873,6 +1020,11 @@
       const code = cm.getValue().trim().replace(/;\s*$/, '');
       if (!code) { fb.innerHTML = `<p class="warn">${t('sql_empty')}</p>`; return; }
       if (/;\s*\S/.test(code)) { fb.innerHTML = `<p class="warn">${t('sql_multi')}</p>`; return; }
+      if (!/\bfrom\b/i.test(code.replace(/'[^']*'/g, ''))) {
+        const typo = (code.replace(/'[^']*'/g, '').match(/[A-Za-z]+/g) || []).find((w) => w.length >= 3 && editDist(w.toUpperCase(), 'FROM') <= 2 && !COLS.includes(w.toLowerCase()));
+        fb.innerHTML = `<p class="err">❌ ${typo ? t('sqlerr_typo', { x: esc(typo), fix: 'FROM' }) : t('sqlerr_no_from')}</p>`;
+        return;
+      }
       await sqlReady;
       const q = E.quests[qi];
       const quest = L.quests[qi];
@@ -886,7 +1038,7 @@
         res = out[out.length - 1];
       } catch (e) {
         db.close();
-        fb.innerHTML = `<p class="err">❌ ${sqlError(e.message)}</p>`;
+        fb.innerHTML = `<p class="err">❌ ${sqlError(e.message, code)}</p>`;
         E.lastError = { key: 'sqlerr_other', vars: { x: e.message } };
         Sound.play('fail');
         P.save();

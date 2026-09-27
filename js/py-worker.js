@@ -3,7 +3,7 @@
 // synchronously so sensors like ahead() see the real state; the page then
 // replays the recorded actions as an animation.
 importScripts('https://cdn.jsdelivr.net/npm/pyodide@0.26.4/pyodide.js');
-importScripts('world.js?v=8');
+importScripts('world.js?v=9');
 
 const MAX_STEPS = 3000;
 let py = null;
