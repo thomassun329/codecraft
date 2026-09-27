@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=23');
+      this.worker = new Worker('js/py-worker.js?v=26');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -767,12 +767,21 @@
   function sqlErrorText(msg, code, tables, inLab) {
     let m;
     const bare = noStrings(code);
-    const aliases = new Set([...bare.matchAll(/\bas\s+([a-z_]+)/gi), ...bare.matchAll(/\b(?:from|join)\s+[a-z_]+\s+(?:as\s+)?([a-z_]+)/gi)].map((x) => x[1].toLowerCase()));
+    const prefixes = new Set([...bare.matchAll(/\b([a-z_]+)\./gi)].map((x) => x[1].toLowerCase()));
+    const aliases = new Set([
+      ...[...bare.matchAll(/\bas\s+([a-z_]+)/gi)].map((x) => x[1].toLowerCase()),
+      // "FROM hunts h" only counts as a short name if h. is actually used
+      ...[...bare.matchAll(/\b(?:from|join)\s+[a-z_]+\s+(?:as\s+)?([a-z_]+)/gi)].map((x) => x[1].toLowerCase()).filter((a) => prefixes.has(a)),
+    ]);
     if (has(code, /\bcase\b/i) && !has(code, /\bend\b/i)) return t('sqlerr_case_end');
     if (has(code, /\bcase\b/i) && (bare.match(/\bwhen\b/gi) || []).length !== (bare.match(/\bthen\b/gi) || []).length) return t('sqlerr_case_then');
     if ((m = msg.match(/no such column: (\S+)/))) {
       const full = m[1], parts = full.split('.'), col = parts.pop(), pre = parts.pop();
-      if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) return t('sqlerr_alias_missing', { p: esc(pre), col: esc(col) });
+      if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) {
+        const used = [...bare.matchAll(/\b(?:from|join)\s+([a-z_]+)/gi)].map((x) => x[1].toLowerCase()).filter((tb) => SQL_SCHEMA[tb]);
+        const owner = used.find((tb) => SQL_SCHEMA[tb].some(([c]) => c === col.toLowerCase())) || used[0] || 'hunts';
+        return t('sqlerr_alias_missing', { p: esc(pre), col: esc(col), tb: owner });
+      }
       if (SQL_VALUES.has(col.toLowerCase())) return t('sqlerr_column', { x: esc(col) }) + ' ' + t('sqlerr_text_quote');
       const near = closest(col, SQL_ALL_COLS);
       if (near && near !== col) return t('sqlerr_column_typo', { x: esc(full), fix: (pre ? pre + '.' : '') + near });
@@ -810,10 +819,13 @@
   // quest answers are always checked on the query's own result.
   function makeResultsView(wrap, labelEl) {
     let shownRes = null, sortCol = -1, sortDir = 1;
-    function show(res) {
-      if (res !== undefined) { shownRes = res; sortCol = -1; sortDir = 1; }
+    let shownNote = '';
+    // note: optional banner, e.g. "your query works, it's just not the answer yet".
+    function show(res, note) {
+      if (res !== undefined) { shownRes = res; shownNote = note || ''; sortCol = -1; sortDir = 1; }
       res = shownRes;
-      if (!res) { wrap.innerHTML = `<div class="muted">${t('sql_rows', { n: 0 })}</div>`; labelEl.textContent = t('sql_rows', { n: 0 }); return; }
+      const banner = shownNote ? `<div class="result-note">${shownNote}</div>` : '';
+      if (!res) { wrap.innerHTML = banner + `<div class="muted">${t('sql_rows', { n: 0 })}</div>`; labelEl.textContent = t('sql_rows', { n: 0 }); return; }
       let rows = res.values.slice();
       if (sortCol >= 0) {
         rows.sort((a, b) => {
@@ -825,7 +837,7 @@
       rows = rows.slice(0, 200);
       labelEl.textContent = t(res.values.length === 1 ? 'sql_row' : 'sql_rows', { n: res.values.length });
       const arrow = (i) => (i === sortCol ? (sortDir === 1 ? '▲' : '▼') : '⇅');
-      wrap.innerHTML = `
+      wrap.innerHTML = banner + `
         <p class="sort-tip">${sortCol >= 0 ? t('sort_view_only', { col: esc(res.columns[sortCol]) }) : t('sort_tip')}</p>
         <table><thead><tr>${res.columns.map((c, i) => `<th><button class="th-sort ${i === sortCol ? 'on' : ''}" data-col="${i}" title="${esc(t('sort_tip'))}">${esc(c)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead>
         <tbody>${rows.map((r) => `<tr>${r.map((v, i) => `<td class="${typeof v === 'number' ? 'num' : ''} ${i === sortCol ? 'sorted' : ''}">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
@@ -837,6 +849,18 @@
       });
     }
     return { show };
+  }
+
+  // SQLite has no DESCRIBE / SHOW TABLES (MySQL, Databricks do) — translate them.
+  function translateShortcuts(code) {
+    let m;
+    if ((m = code.match(/^\s*(?:describe|desc)\s+(?:table\s+)?([a-z_]\w*)\s*;?\s*$/i))) {
+      return `SELECT name AS col_name, type AS data_type FROM pragma_table_info('${m[1]}')`;
+    }
+    if (/^\s*show\s+tables\s*;?\s*$/i.test(code)) {
+      return "SELECT name AS table_name FROM sqlite_master WHERE type = 'table' ORDER BY rowid";
+    }
+    return code;
   }
 
   function sqlStars(E, n) {
@@ -964,7 +988,7 @@
     };
 
     const results = makeResultsView($('#results'), $('#rowsLabel'));
-    const drawTable = (res) => results.show(res);
+    const drawTable = (res, note) => results.show(res, note);
 
     // Which columns appear in one clause (WHERE … / ORDER BY …) of a query.
     const colsIn = (q, clause) => {
@@ -1097,7 +1121,7 @@
       const code = cm.getValue().trim().replace(/;\s*$/, '');
       if (!code) { fb.innerHTML = `<p class="warn">${t('sql_empty')}</p>`; return; }
       if (/;\s*\S/.test(noStrings(code))) { fb.innerHTML = `<p class="warn">${t('sql_multi')}</p>`; return; }
-      if (!has(code, /\bfrom\b/i)) {
+      if (!has(code, /\bfrom\b/i) && translateShortcuts(code) === code) {
         const typo = (noStrings(code).match(/[A-Za-z]+/g) || []).find((w) => w.length >= 3 && editDist(w.toUpperCase(), 'FROM') <= 2 && !SQL_ALL_COLS.includes(w.toLowerCase()) && !SQL_WORDS.includes(w.toUpperCase()));
         fb.innerHTML = `<p class="err">❌ ${typo ? t('sqlerr_typo', { x: esc(typo), fix: 'FROM' }) : t('sqlerr_no_from')}</p>`;
         return;
@@ -1111,11 +1135,12 @@
       const db = freshDB();
       let res;
       try {
-        const out = db.exec(code);
+        const out = db.exec(translateShortcuts(code));
         res = out[out.length - 1];
       } catch (e) {
         db.close();
         const text = sqlErrorText(e.message, code, L.tables);
+        drawTable(null, `❌ ${t('res_error')}`);
         fb.innerHTML = `<p class="err">❌ ${text}</p>`;
         E.lastError = { key: 'sqlerr_other', vars: { x: text.replace(/<[^>]+>/g, '') } };
         Sound.play('fail');
@@ -1124,10 +1149,11 @@
       }
       const exp = db.exec(quest.answer)[0];
       db.close();
-      drawTable(res || null);
       const c = compare(res, exp, quest, code);
+      const n = res ? res.values.length : 0;
+      drawTable(res || null, c.ok ? `✅ ${t('res_correct')}` : `✔ ${t(n === 1 ? 'res_ran_1' : 'res_ran', { n })}`);
       if (!c.ok) {
-        fb.innerHTML = `<p class="err">🤔 ${t(c.key, c.vars)}</p>`;
+        fb.innerHTML = `<p class="err"><b>🤔 ${t('fb_works_but')}</b> ${t(c.key, c.vars)}</p>`;
         E.lastError = { key: c.key, vars: c.vars };
         Sound.play('fail');
         P.save();
@@ -1198,7 +1224,7 @@
         <div class="lv-grid">
           <section class="col col-info">
             <div class="card"><h3>🔭 ${t('lab_ideas')}</h3><div class="ideas" id="ideas"></div></div>
-            <div class="card schema"><h3>🗂 ${t('tables')}</h3><p class="muted small-note">👆 ${t('lab_peek')}</p><div id="labTables"></div></div>
+            <div class="card schema"><h3>🗂 ${t('tables')}</h3><p class="muted small-note">👆 ${t('lab_peek')}<br>💡 ${t('lab_describe')}</p><div id="labTables"></div></div>
           </section>
           <section class="col col-code">
             <div class="editor sql lab-editor"><textarea id="code"></textarea></div>
@@ -1276,7 +1302,9 @@
       P.save();
       drawHistory();
       try {
-        const out = db.exec(code);
+        const dm = code.match(/^\s*(?:describe|desc)\s+(?:table\s+)?([a-z_]\w*)\s*;?\s*$/i);
+        if (dm && !db.exec(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '${dm[1]}'`).length) throw new Error('no such table: ' + dm[1]);
+        const out = db.exec(translateShortcuts(code));
         const writes = /\b(insert|update|delete|replace)\b/i.test(noStrings(code));
         const changed = writes ? db.getRowsModified() : 0;
         if (out.length) {
@@ -1290,7 +1318,7 @@
         Sound.play('click');
       } catch (e) {
         const live = (db.exec("SELECT name FROM sqlite_master WHERE type = 'table'")[0] || { values: [] }).values.map((r) => r[0]);
-        results.show(null);
+        results.show(null, `❌ ${t('res_error')}`);
         fb.innerHTML = `<p class="err">❌ ${sqlErrorText(e.message, code, live, true)}</p>`;
         Sound.play('fail');
       }

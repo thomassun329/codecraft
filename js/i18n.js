@@ -682,7 +682,7 @@
     sqlerr_aggregate: "COUNT, SUM, AVG, MIN and MAX can't be used in WHERE — WHERE looks at single rows, before any grouping. To filter groups, use HAVING after GROUP BY.",
     sqlerr_case_end: "Every CASE needs an END at the end: CASE WHEN … THEN … ELSE … END",
     sqlerr_case_then: "Every WHEN needs a THEN: WHEN damage &gt; 10 THEN 'danger'",
-    sqlerr_alias_missing: "You wrote {p}.{col}, but no table has the short name \"{p}\". Give it that name right after the table: FROM hunts {p}",
+    sqlerr_alias_missing: "You wrote {p}.{col}, but no table has the short name \"{p}\". Give it that name right after the table: FROM {tb} {p}",
     sqlerr_having_group: "HAVING only works together with GROUP BY — put GROUP BY … before it.",
     sqlerr_group_by: "GROUP always needs BY: GROUP BY biome",
     sqlerr_table: "There is no table called \"{x}\". In this chapter you can use: {list}.",
@@ -723,7 +723,7 @@
     sqlerr_aggregate: "COUNT, SUM, AVG, MIN y MAX no se pueden usar en WHERE — WHERE mira filas sueltas, antes de agrupar. Para filtrar grupos, usa HAVING después de GROUP BY.",
     sqlerr_case_end: "Cada CASE necesita un END al final: CASE WHEN … THEN … ELSE … END",
     sqlerr_case_then: "Cada WHEN necesita un THEN: WHEN damage &gt; 10 THEN 'danger'",
-    sqlerr_alias_missing: "Escribiste {p}.{col}, pero ninguna tabla tiene el nombre corto \"{p}\". Pónselo justo después de la tabla: FROM hunts {p}",
+    sqlerr_alias_missing: "Escribiste {p}.{col}, pero ninguna tabla tiene el nombre corto \"{p}\". Pónselo justo después de la tabla: FROM {tb} {p}",
     sqlerr_having_group: "HAVING solo funciona junto con GROUP BY — pon GROUP BY … antes.",
     sqlerr_group_by: "GROUP siempre necesita BY: GROUP BY biome",
     sqlerr_table: "No hay ninguna tabla llamada \"{x}\". En este capítulo puedes usar: {list}.",
@@ -764,7 +764,7 @@
     sqlerr_aggregate: "COUNT, SUM, AVG, MIN und MAX gehen nicht in WHERE — WHERE schaut sich einzelne Zeilen an, vor dem Gruppieren. Um Gruppen zu filtern, nimm HAVING nach GROUP BY.",
     sqlerr_case_end: "Jedes CASE braucht am Ende ein END: CASE WHEN … THEN … ELSE … END",
     sqlerr_case_then: "Jedes WHEN braucht ein THEN: WHEN damage &gt; 10 THEN 'danger'",
-    sqlerr_alias_missing: "Du hast {p}.{col} geschrieben, aber keine Tabelle hat den kurzen Namen \"{p}\". Gib ihn ihr direkt hinter dem Tabellennamen: FROM hunts {p}",
+    sqlerr_alias_missing: "Du hast {p}.{col} geschrieben, aber keine Tabelle hat den kurzen Namen \"{p}\". Gib ihn ihr direkt hinter dem Tabellennamen: FROM {tb} {p}",
     sqlerr_having_group: "HAVING klappt nur zusammen mit GROUP BY — schreib GROUP BY … davor.",
     sqlerr_group_by: "GROUP braucht immer BY: GROUP BY biome",
     sqlerr_table: "Es gibt keine Tabelle \"{x}\". In diesem Kapitel kannst du nehmen: {list}.",
@@ -773,6 +773,12 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    lab_describe: "Tip: <code>DESCRIBE mobs</code> shows a table's columns, <code>SHOW TABLES</code> lists all tables.",
+    res_ran: "Your query works — it found {n} rows. It's just not what this quest is looking for yet (see the tip).",
+    res_ran_1: "Your query works — it found 1 row. It's just not what this quest is looking for yet (see the tip).",
+    res_correct: "This is exactly what the quest asked for!",
+    res_error: "Your query couldn't run, so there are no results — see the message under the editor.",
+    fb_works_but: "Your query works — but:",
     lab_changed_1: "Done — 1 row changed.",
     sqlerr_table_lab: "There is no table called \"{x}\". The tables are: {list}.",
     sql_row: "1 row",
@@ -797,6 +803,12 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    lab_describe: "Consejo: <code>DESCRIBE mobs</code> muestra las columnas de una tabla, <code>SHOW TABLES</code> lista todas las tablas.",
+    res_ran: "Tu consulta funciona — encontró {n} filas. Solo que todavía no es lo que busca esta misión (mira el consejo).",
+    res_ran_1: "Tu consulta funciona — encontró 1 fila. Solo que todavía no es lo que busca esta misión (mira el consejo).",
+    res_correct: "¡Esto es justo lo que pedía la misión!",
+    res_error: "Tu consulta no se pudo ejecutar, así que no hay resultados — mira el mensaje debajo del editor.",
+    fb_works_but: "Tu consulta funciona — pero:",
     lab_changed_1: "Hecho — 1 fila cambiada.",
     sqlerr_table_lab: "No hay ninguna tabla llamada \"{x}\". Las tablas son: {list}.",
     sql_row: "1 fila",
@@ -821,6 +833,12 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    lab_describe: "Tipp: <code>DESCRIBE mobs</code> zeigt die Spalten einer Tabelle, <code>SHOW TABLES</code> listet alle Tabellen.",
+    res_ran: "Deine Abfrage funktioniert — sie hat {n} Zeilen gefunden. Sie ist nur noch nicht das, was diese Aufgabe sucht (siehe Tipp).",
+    res_ran_1: "Deine Abfrage funktioniert — sie hat 1 Zeile gefunden. Sie ist nur noch nicht das, was diese Aufgabe sucht (siehe Tipp).",
+    res_correct: "Genau das wollte die Aufgabe!",
+    res_error: "Deine Abfrage konnte nicht laufen, deshalb gibt es keine Ergebnisse — schau dir die Meldung unter dem Editor an.",
+    fb_works_but: "Deine Abfrage funktioniert — aber:",
     lab_changed_1: "Fertig — 1 Zeile geändert.",
     sqlerr_table_lab: "Es gibt keine Tabelle \"{x}\". Die Tabellen heißen: {list}.",
     sql_row: "1 Zeile",
