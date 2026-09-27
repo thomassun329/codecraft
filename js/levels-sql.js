@@ -22,32 +22,60 @@
   },
   "quests": [
    {
+    "answer": "DESCRIBE mobs",
+    "example": "DESCRIBE mobs",
+    "text": {
+     "en": {
+      "idea": "DESCRIBE",
+      "lesson": "Before you use a table, look at what's in it. <code>DESCRIBE mobs</code> lists every <b>column</b> and its <b>type</b>: <code>TEXT</code> means words, <code>INTEGER</code> means whole numbers. Remember the types — they matter later! (Some databases use a different command for this, but the habit is the same.)",
+      "task": "Meet your first table: see which columns <code>mobs</code> has. The code is already there — just press ▶ Run!",
+      "hint": "Just press Run 🙂"
+     },
+     "es": {
+      "idea": "DESCRIBE",
+      "lesson": "Antes de usar una tabla, mira qué contiene. <code>DESCRIBE mobs</code> muestra cada <b>columna</b> y su <b>tipo</b>: <code>TEXT</code> son palabras, <code>INTEGER</code> son números enteros. ¡Recuerda los tipos, importan más adelante! (Algunas bases de datos usan otro comando para esto, pero la costumbre es la misma.)",
+      "task": "Conoce tu primera tabla: mira qué columnas tiene <code>mobs</code>. El código ya está escrito — ¡solo pulsa ▶ Ejecutar!",
+      "hint": "Solo pulsa Ejecutar 🙂"
+     },
+     "de": {
+      "idea": "DESCRIBE",
+      "lesson": "Bevor du eine Tabelle benutzt, schau, was drin ist. <code>DESCRIBE mobs</code> zeigt jede <b>Spalte</b> und ihren <b>Typ</b>: <code>TEXT</code> sind Wörter, <code>INTEGER</code> sind ganze Zahlen. Merk dir die Typen — die sind später wichtig! (Manche Datenbanken nehmen dafür einen anderen Befehl, aber die Gewohnheit ist dieselbe.)",
+      "task": "Lern deine erste Tabelle kennen: Schau, welche Spalten <code>mobs</code> hat. Der Code steht schon da — drück einfach ▶ Start!",
+      "hint": "Drück einfach Start 🙂"
+     }
+    },
+    "starter": "DESCRIBE mobs",
+    "unlock": {
+     "mobs": [
+      1
+     ]
+    }
+   },
+   {
     "answer": "SELECT * FROM mobs",
     "example": "SELECT * FROM mobs",
     "text": {
      "en": {
       "idea": "SELECT * FROM",
-      "lesson": "A <b>database</b> keeps data in <b>tables</b>, like a spreadsheet. <code>SELECT</code> says what you want to see, <code>FROM</code> says which table. <code>*</code> means \"every column\".",
-      "task": "Show <b>everything</b> in the <code>mobs</code> table. The code is already there — just press ▶ Run!",
-      "hint": "Just press Run 🙂"
+      "lesson": "Now look at the actual data. <code>SELECT</code> says what you want to see, <code>FROM</code> says which table. <code>*</code> means \"every column\".",
+      "task": "Show <b>everything</b> in the <code>mobs</code> table — this time you type it yourself.",
+      "hint": "SELECT * FROM mobs"
      },
      "es": {
       "idea": "SELECT * FROM",
-      "lesson": "Una <b>base de datos</b> guarda datos en <b>tablas</b>, como una hoja de cálculo. <code>SELECT</code> dice qué quieres ver, <code>FROM</code> de qué tabla. <code>*</code> significa \"todas las columnas\".",
-      "task": "Muestra <b>todo</b> lo que hay en la tabla <code>mobs</code>. El código ya está escrito — ¡solo pulsa ▶ Ejecutar!",
-      "hint": "Solo pulsa Ejecutar 🙂"
+      "lesson": "Ahora mira los datos de verdad. <code>SELECT</code> dice qué quieres ver, <code>FROM</code> de qué tabla. <code>*</code> significa \"todas las columnas\".",
+      "task": "Muestra <b>todo</b> lo que hay en la tabla <code>mobs</code> — esta vez lo escribes tú.",
+      "hint": "SELECT * FROM mobs"
      },
      "de": {
       "idea": "SELECT * FROM",
-      "lesson": "Eine <b>Datenbank</b> speichert Daten in <b>Tabellen</b>, wie eine Tabellenkalkulation. <code>SELECT</code> sagt, was du sehen willst, <code>FROM</code> aus welcher Tabelle. <code>*</code> heißt \"alle Spalten\".",
-      "task": "Zeig <b>alles</b> aus der Tabelle <code>mobs</code>. Der Code steht schon da — drück einfach ▶ Start!",
-      "hint": "Drück einfach Start 🙂"
+      "lesson": "Jetzt schau dir die echten Daten an. <code>SELECT</code> sagt, was du sehen willst, <code>FROM</code> aus welcher Tabelle. <code>*</code> heißt \"alle Spalten\".",
+      "task": "Zeig <b>alles</b> aus der Tabelle <code>mobs</code> — diesmal tippst du es selbst.",
+      "hint": "SELECT * FROM mobs"
      }
     },
-    "starter": "SELECT * FROM mobs",
     "unlock": {
      "mobs": [
-      1,
       2,
       14
      ]
@@ -233,19 +261,19 @@
     "text": {
      "en": {
       "idea": "WHERE",
-      "lesson": "<code>WHERE</code> keeps only the rows that match a rule. It comes right after <code>FROM</code>. Text goes in <b>single quotes</b>: <code>'hostile'</code>.",
+      "lesson": "<code>WHERE</code> keeps only the rows that match a rule. It comes right after <code>FROM</code>. Remember DESCRIBE? <code>type</code> is <code>TEXT</code> — and text always goes in <b>single quotes</b>: <code>'hostile'</code>.",
       "task": "Show all columns, but only for <b>hostile</b> mobs.",
       "hint": "WHERE type = 'hostile' — don't forget the quotes."
      },
      "es": {
       "idea": "WHERE",
-      "lesson": "<code>WHERE</code> se queda solo con las filas que cumplen una regla. Va justo después de <code>FROM</code>. El texto va entre <b>comillas simples</b>: <code>'hostile'</code>.",
+      "lesson": "<code>WHERE</code> se queda solo con las filas que cumplen una regla. Va justo después de <code>FROM</code>. ¿Recuerdas DESCRIBE? <code>type</code> es <code>TEXT</code> — y el texto siempre va entre <b>comillas simples</b>: <code>'hostile'</code>.",
       "task": "Muestra todas las columnas, pero solo de las criaturas <b>hostile</b>.",
       "hint": "WHERE type = 'hostile' — no olvides las comillas."
      },
      "de": {
       "idea": "WHERE",
-      "lesson": "<code>WHERE</code> behält nur die Zeilen, die zu einer Regel passen. Es kommt direkt nach <code>FROM</code>. Text kommt in <b>einfache Anführungszeichen</b>: <code>'hostile'</code>.",
+      "lesson": "<code>WHERE</code> behält nur die Zeilen, die zu einer Regel passen. Es kommt direkt nach <code>FROM</code>. Erinnerst du dich an DESCRIBE? <code>type</code> ist <code>TEXT</code> — und Text kommt immer in <b>einfache Anführungszeichen</b>: <code>'hostile'</code>.",
       "task": "Zeig alle Spalten, aber nur für <b>hostile</b> Mobs.",
       "hint": "WHERE type = 'hostile' — vergiss die Anführungszeichen nicht."
      }
@@ -262,19 +290,19 @@
     "text": {
      "en": {
       "idea": "Compare numbers",
-      "lesson": "For numbers: <code>&gt;</code> bigger, <code>&lt;</code> smaller, <code>&gt;=</code> bigger or equal, <code>&lt;=</code> smaller or equal, <code>!=</code> not equal. Numbers need <b>no</b> quotes.",
+      "lesson": "For numbers: <code>&gt;</code> bigger, <code>&lt;</code> smaller, <code>&gt;=</code> bigger or equal, <code>&lt;=</code> smaller or equal, <code>!=</code> not equal. <code>health</code> is an <code>INTEGER</code>, so it needs <b>no</b> quotes.",
       "task": "Show the <b>name</b> of every mob with <b>more than 20</b> health.",
       "hint": "\"More than\" is &gt;."
      },
      "es": {
       "idea": "Comparar números",
-      "lesson": "Para números: <code>&gt;</code> mayor, <code>&lt;</code> menor, <code>&gt;=</code> mayor o igual, <code>&lt;=</code> menor o igual, <code>!=</code> distinto. Los números <b>no</b> llevan comillas.",
+      "lesson": "Para números: <code>&gt;</code> mayor, <code>&lt;</code> menor, <code>&gt;=</code> mayor o igual, <code>&lt;=</code> menor o igual, <code>!=</code> distinto. <code>health</code> es <code>INTEGER</code>, así que <b>no</b> lleva comillas.",
       "task": "Muestra el <b>name</b> de cada criatura con <b>más de 20</b> de vida.",
       "hint": "\"Más de\" es &gt;."
      },
      "de": {
       "idea": "Zahlen vergleichen",
-      "lesson": "Für Zahlen: <code>&gt;</code> größer, <code>&lt;</code> kleiner, <code>&gt;=</code> größer oder gleich, <code>&lt;=</code> kleiner oder gleich, <code>!=</code> ungleich. Zahlen brauchen <b>keine</b> Anführungszeichen.",
+      "lesson": "Für Zahlen: <code>&gt;</code> größer, <code>&lt;</code> kleiner, <code>&gt;=</code> größer oder gleich, <code>&lt;=</code> kleiner oder gleich, <code>!=</code> ungleich. <code>health</code> ist ein <code>INTEGER</code>, also braucht es <b>keine</b> Anführungszeichen.",
       "task": "Zeig den <b>name</b> jedes Mobs mit <b>mehr als 20</b> Leben.",
       "hint": "\"Mehr als\" ist &gt;."
      }
@@ -481,6 +509,30 @@
    }
   },
   "quests": [
+   {
+    "answer": "DESCRIBE hunts",
+    "example": "DESCRIBE hunts",
+    "text": {
+     "en": {
+      "idea": "Describe a new table",
+      "lesson": "New table, same habit: <b>describe it first</b>. Look at <code>player_id</code> and <code>mob_id</code> — they are numbers that point to rows in other tables (player 3, mob 6…). You'll connect them in chapter 6.",
+      "task": "Before counting anything, <b>describe</b> the <code>hunts</code> table.",
+      "hint": "DESCRIBE hunts"
+     },
+     "es": {
+      "idea": "Describe una tabla nueva",
+      "lesson": "Tabla nueva, misma costumbre: <b>descríbela primero</b>. Fíjate en <code>player_id</code> y <code>mob_id</code> — son números que apuntan a filas de otras tablas (jugador 3, criatura 6…). Las conectarás en el capítulo 6.",
+      "task": "Antes de contar nada, <b>describe</b> la tabla <code>hunts</code>.",
+      "hint": "DESCRIBE hunts"
+     },
+     "de": {
+      "idea": "Eine neue Tabelle beschreiben",
+      "lesson": "Neue Tabelle, gleiche Gewohnheit: <b>zuerst beschreiben</b>. Schau dir <code>player_id</code> und <code>mob_id</code> an — das sind Zahlen, die auf Zeilen in anderen Tabellen zeigen (Spieler 3, Mob 6…). Die verbindest du in Kapitel 6.",
+      "task": "Bevor du etwas zählst: <b>Beschreib</b> die Tabelle <code>hunts</code>.",
+      "hint": "DESCRIBE hunts"
+     }
+    }
+   },
    {
     "answer": "SELECT * FROM hunts WHERE day = 1",
     "example": "SELECT * FROM hunts WHERE biome = 'nether'",
@@ -1046,6 +1098,30 @@
   },
   "quests": [
    {
+    "answer": "DESCRIBE players",
+    "example": "SHOW TABLES",
+    "text": {
+     "en": {
+      "idea": "Find the matching columns",
+      "lesson": "<code>SHOW TABLES</code> lists every table. To connect two tables you need a column in one that <b>matches</b> a column in the other — so describe them and look for the match: <code>hunts.player_id</code> ↔ <code>players.id</code>.",
+      "task": "<b>Describe</b> the <code>players</code> table. Which of its columns could match <code>hunts.player_id</code>?",
+      "hint": "DESCRIBE players"
+     },
+     "es": {
+      "idea": "Encuentra las columnas que coinciden",
+      "lesson": "<code>SHOW TABLES</code> muestra todas las tablas. Para conectar dos tablas necesitas una columna en una que <b>coincida</b> con una columna de la otra — así que descríbelas y busca la pareja: <code>hunts.player_id</code> ↔ <code>players.id</code>.",
+      "task": "<b>Describe</b> la tabla <code>players</code>. ¿Qué columna suya podría coincidir con <code>hunts.player_id</code>?",
+      "hint": "DESCRIBE players"
+     },
+     "de": {
+      "idea": "Finde die passenden Spalten",
+      "lesson": "<code>SHOW TABLES</code> listet alle Tabellen. Um zwei Tabellen zu verbinden, brauchst du eine Spalte in der einen, die zu einer Spalte in der anderen <b>passt</b> — also beschreib sie und such das Paar: <code>hunts.player_id</code> ↔ <code>players.id</code>.",
+      "task": "<b>Beschreib</b> die Tabelle <code>players</code>. Welche ihrer Spalten könnte zu <code>hunts.player_id</code> passen?",
+      "hint": "DESCRIBE players"
+     }
+    }
+   },
+   {
     "answer": "SELECT hunts.day, mobs.name FROM hunts JOIN mobs ON hunts.mob_id = mobs.id",
     "example": "SELECT hunts.day, players.name\nFROM hunts\nJOIN players ON hunts.player_id = players.id",
     "text": {
@@ -1216,6 +1292,30 @@
    }
   },
   "quests": [
+   {
+    "answer": "DESCRIBE chest_log",
+    "example": "SHOW TABLES",
+    "text": {
+     "en": {
+      "idea": "Clue 0: the evidence",
+      "lesson": "A good detective first checks <b>what evidence exists</b>. There are two new tables in this case: <code>chest_log</code> and <code>trades</code>.",
+      "task": "<b>Describe</b> the <code>chest_log</code> table to see what the village wrote down about the chest.",
+      "hint": "DESCRIBE chest_log"
+     },
+     "es": {
+      "idea": "Pista 0: las pruebas",
+      "lesson": "Un buen detective primero mira <b>qué pruebas hay</b>. En este caso hay dos tablas nuevas: <code>chest_log</code> y <code>trades</code>.",
+      "task": "<b>Describe</b> la tabla <code>chest_log</code> para ver qué apuntó la aldea sobre el cofre.",
+      "hint": "DESCRIBE chest_log"
+     },
+     "de": {
+      "idea": "Hinweis 0: die Beweise",
+      "lesson": "Ein guter Detektiv schaut zuerst, <b>welche Beweise es gibt</b>. In diesem Fall gibt es zwei neue Tabellen: <code>chest_log</code> und <code>trades</code>.",
+      "task": "<b>Beschreib</b> die Tabelle <code>chest_log</code>, um zu sehen, was das Dorf über die Truhe aufgeschrieben hat.",
+      "hint": "DESCRIBE chest_log"
+     }
+    }
+   },
    {
     "answer": "SELECT * FROM chest_log WHERE item = 'diamond' ORDER BY day, hour",
     "example": "SELECT * FROM hunts ORDER BY day, xp DESC",

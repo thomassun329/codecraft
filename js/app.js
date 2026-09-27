@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=26');
+      this.worker = new Worker('js/py-worker.js?v=28');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -884,6 +884,8 @@
     const L = SQL_LEVELS[idx];
     const ch = pick(L.text);
     const E = P.level(id);
+    // A DESCRIBE quest was added at the start of some chapters: keep old progress, shifted by one.
+    if (E.quests && E.quests.length === L.quests.length - 1) E.quests.unshift({ done: E.quests.some((q) => q.done), attempts: 0, solutionSeen: false });
     if (!E.quests || E.quests.length !== L.quests.length) E.quests = L.quests.map(() => ({ done: false, attempts: 0, solutionSeen: false }));
     E.lastPlayed = Date.now();
     P.save();
@@ -1002,7 +1004,15 @@
     const rowKey = (r) => JSON.stringify(r.map((v) => (v === null ? 'NULL' : String(v))).sort());
 
     // Compare by result, not by text, and when it's wrong, say *what kind* of wrong.
+    const describes = (q) => (q.match(/^\s*(?:describe|desc)\s+(?:table\s+)?([a-z_]\w*)/i) || [])[1];
     function compare(got, exp, quest, code) {
+      const want = describes(quest.answer);
+      if (want) {
+        const have = describes(code);
+        if (!have) return { ok: false, key: 'sql_use_describe', vars: { tb: want } };
+        if (have.toLowerCase() !== want) return { ok: false, key: 'sql_describe_table', vars: { got: esc(have), tb: want } };
+        return { ok: true };
+      }
       const g = got || { columns: exp.columns, values: [] };
       const G = g.columns.map(norm), X = exp.columns.map(norm);
       const namesMatch = G.length === X.length && X.every((c) => G.includes(c));
@@ -1147,7 +1157,7 @@
         P.save();
         return;
       }
-      const exp = db.exec(quest.answer)[0];
+      const exp = db.exec(translateShortcuts(quest.answer))[0];
       db.close();
       const c = compare(res, exp, quest, code);
       const n = res ? res.values.length : 0;

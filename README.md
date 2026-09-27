@@ -6,9 +6,10 @@ Available in English, Spanish and German. Plain static site: no build step, no n
 - **Python Mines** (5 levels): real Python runs in the browser (Pyodide in a Web Worker) and controls a miner.
   Commands → for loops → if/else → while + variables → functions (boss).
   Levels 3–4 are tested on 3 random worlds, so the code has to *look* (`ahead()`) instead of memorizing a path.
-- **SQL Mobdex Lab** (8 chapters, 47 quests, one new idea per quest): real SQLite (sql.js) over a small star schema —
+- **SQL Mobdex Lab** (8 chapters, 51 quests, one new idea per quest): real SQLite (sql.js) over a small star schema —
   `mobs`, `items`, `players` (descriptive tables) and `hunts` (an event log), plus `chest_log` and `trades` for the detective case.
-  1 Open the Mobdex (SELECT, AS, DISTINCT, ORDER BY, LIMIT, maths) · 2 Mob Hunter (WHERE, AND/OR, IN, BETWEEN, LIKE, IS NULL) ·
+  Every new table starts with `DESCRIBE` (translated for SQLite, as is `SHOW TABLES`).
+  1 Open the Mobdex (DESCRIBE, SELECT, AS, DISTINCT, ORDER BY, LIMIT, maths) · 2 Mob Hunter (WHERE, AND/OR, IN, BETWEEN, LIKE, IS NULL) ·
   3 The Hunt Log (COUNT, SUM, AVG, ROUND, MIN/MAX, COUNT DISTINCT) · 4 Village Report (GROUP BY, HAVING) ·
   5 Label Maker (CASE WHEN, UPPER/LENGTH, ||) · 6 Connect the Tables (JOIN, aliases, LEFT JOIN, 3-table joins) ·
   7 👑 The Diamond Thief (guided case: subqueries, WITH) · 8 ⭐ Leaderboards (RANK, PARTITION BY, running totals).

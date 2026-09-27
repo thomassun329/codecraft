@@ -1,4 +1,5 @@
 A = {
+'1.0': "DESCRIBE mobs", '3.0': "DESCRIBE hunts", '6.0': "DESCRIBE players", '7.0': "DESCRIBE chest_log",
 '1.1': "SELECT * FROM mobs", '1.2': "SELECT name, health FROM mobs", '1.3': "SELECT name, health FROM mobs ORDER BY health DESC",
 '1.4': "SELECT name, health FROM mobs ORDER BY health DESC LIMIT 3", '1.5': "SELECT DISTINCT home FROM mobs",
 '1.6': "SELECT name, damage * 3 AS three_hits FROM mobs",
@@ -37,7 +38,11 @@ if __name__ == '__main__':
     import sqlite3, json, re
     db = json.loads(re.search(r'window\.SQL_DB_SQL = (".*");', open(__import__('os').path.join(__import__('os').path.dirname(__file__), '..', 'js', 'sql-data.js')).read()).group(1))
     c = sqlite3.connect(':memory:'); c.executescript(db)
+    import re as _re
+    def run(q):  # the site translates DESCRIBE, SQLite doesn't have it
+        m = _re.match(r'^\s*describe\s+(\w+)', q, _re.I)
+        return c.execute(f"SELECT name, type FROM pragma_table_info('{m.group(1)}')" if m else q).fetchall()
     for k, q in A.items():
-        rows = c.execute(q).fetchall()
+        rows = run(q)
         show = rows if len(rows) <= 8 else rows[:6] + ['…']
         print(f"{k} [{len(rows):>2}] {show}")

@@ -773,6 +773,8 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    sql_use_describe: "This quest is about <b>looking at the table first</b>. Use DESCRIBE: <code>DESCRIBE {tb}</code>",
+    sql_describe_table: "You described <code>{got}</code>, but this quest is about the <code>{tb}</code> table.",
     lab_describe: "Tip: <code>DESCRIBE mobs</code> shows a table's columns, <code>SHOW TABLES</code> lists all tables.",
     res_ran: "Your query works — it found {n} rows. It's just not what this quest is looking for yet (see the tip).",
     res_ran_1: "Your query works — it found 1 row. It's just not what this quest is looking for yet (see the tip).",
@@ -803,6 +805,8 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    sql_use_describe: "Esta misión trata de <b>mirar primero la tabla</b>. Usa DESCRIBE: <code>DESCRIBE {tb}</code>",
+    sql_describe_table: "Describiste <code>{got}</code>, pero esta misión trata de la tabla <code>{tb}</code>.",
     lab_describe: "Consejo: <code>DESCRIBE mobs</code> muestra las columnas de una tabla, <code>SHOW TABLES</code> lista todas las tablas.",
     res_ran: "Tu consulta funciona — encontró {n} filas. Solo que todavía no es lo que busca esta misión (mira el consejo).",
     res_ran_1: "Tu consulta funciona — encontró 1 fila. Solo que todavía no es lo que busca esta misión (mira el consejo).",
@@ -833,6 +837,8 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    sql_use_describe: "In dieser Aufgabe geht es darum, <b>zuerst die Tabelle anzuschauen</b>. Nimm DESCRIBE: <code>DESCRIBE {tb}</code>",
+    sql_describe_table: "Du hast <code>{got}</code> beschrieben, aber in dieser Aufgabe geht es um die Tabelle <code>{tb}</code>.",
     lab_describe: "Tipp: <code>DESCRIBE mobs</code> zeigt die Spalten einer Tabelle, <code>SHOW TABLES</code> listet alle Tabellen.",
     res_ran: "Deine Abfrage funktioniert — sie hat {n} Zeilen gefunden. Sie ist nur noch nicht das, was diese Aufgabe sucht (siehe Tipp).",
     res_ran_1: "Deine Abfrage funktioniert — sie hat 1 Zeile gefunden. Sie ist nur noch nicht das, was diese Aufgabe sucht (siehe Tipp).",
