@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=28');
+      this.worker = new Worker('js/py-worker.js?v=29');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -667,6 +667,7 @@
       const next = PY_LEVELS[idx + 1];
       showWin({
         stars, xpBefore, xpAfter: totalXP(),
+        title: t('win_level', { n: idx + 1, name: tx.title }),
         nextHref: next ? `#/py/${next.id}` : '#/',
         onAgain: () => {},
       });
@@ -682,21 +683,21 @@
     setTimeout(() => cm.refresh(), 0);
   }
 
-  function showWin({ stars, xpBefore, xpAfter, nextHref, starsTotal }) {
+  function showWin({ stars, xpBefore, xpAfter, nextHref, starsTotal, title, nextLabel }) {
     Sound.play('win');
     confetti();
     const rb = rankOf(xpBefore), ra = rankOf(xpAfter), ranks = t('ranks');
     const newSkin = Object.keys(SKIN_RANK).find((s) => SKIN_RANK[s] > rb && SKIN_RANK[s] <= ra);
     const m = modal(`
       <div class="win-stars">${Array.from({ length: starsTotal || 3 }, (_, i) => `<span class="star big ${i < stars ? 'on' : ''}" style="animation-delay:${0.2 + i * 0.25}s">★</span>`).join('')}</div>
-      <h2>${t('win')}</h2>
+      <h2>${esc(title || t('win'))}</h2>
       <p>${esc(t('win_sub', { name: D().name }))}</p>
       <p class="xp-gain">${xpAfter > xpBefore ? t('xp_gain', { n: xpAfter - xpBefore }) : ''}</p>
       ${ra > rb ? `<p class="rank-up">🏅 ${t('rank_up', { rank: ranks[ra] })}</p>` : ''}
       ${newSkin ? `<p class="rank-up">🪖 ${t('skin_unlock', { skin: t('skin_' + newSkin) })}</p>` : ''}
       <div class="modal-actions">
         ${stars < (starsTotal || 3) ? `<button class="btn ghost" data-close>${t('again')}</button>` : ''}
-        <a class="btn" href="${nextHref}" data-go>${nextHref === '#/' ? t('to_map') : nextHref === '#/mobdex' ? '📖 ' + t('mobdex') : t('next') + ' →'}</a>
+        <a class="btn" href="${nextHref}" data-go>${nextHref === '#/' ? t('to_map') : nextHref === '#/mobdex' ? '📖 ' + t('mobdex') : (nextLabel || t('next')) + ' →'}</a>
       </div>`, { cls: 'center win' });
     $('[data-go]', m).addEventListener('click', () => m.remove());
     renderHeader();
@@ -934,7 +935,7 @@
 
     const nextLevel = SQL_LEVELS[idx + 1];
     const onwardLink = () => (nextLevel && unlocked(SQL_LEVELS, idx + 1)
-      ? `<a class="btn" href="#/sql/${nextLevel.id}">${t('next')} →</a>`
+      ? `<a class="btn" href="#/sql/${nextLevel.id}">${t('next_chapter')} →</a>`
       : `<a class="btn" href="#/mobdex">📖 ${t('mobdex')}</a>`) + ` <a class="btn ghost" href="#/">${t('to_map')}</a>`;
     function onward() {
       const n = E.quests.findIndex((x) => !x.done);
@@ -1202,7 +1203,7 @@
       drawQuest();
       if (firstFinish) {
         const next = SQL_LEVELS[idx + 1];
-        setTimeout(() => showWin({ stars: E.stars, xpBefore, xpAfter: totalXP(), nextHref: next ? `#/sql/${next.id}` : '#/mobdex' }), 900);
+        setTimeout(() => showWin({ stars: E.stars, xpBefore, xpAfter: totalXP(), title: t('win_chapter', { n: idx + 1, name: ch.title }), nextLabel: t('next_chapter'), nextHref: next ? `#/sql/${next.id}` : '#/mobdex' }), 900);
       }
     }
 

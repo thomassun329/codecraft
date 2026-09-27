@@ -773,6 +773,9 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    win_level: "Level {n} complete: {name}!",
+    win_chapter: "Chapter {n} complete: {name}!",
+    next_chapter: "Next chapter",
     sql_use_describe: "This quest is about <b>looking at the table first</b>. Use DESCRIBE: <code>DESCRIBE {tb}</code>",
     sql_describe_table: "You described <code>{got}</code>, but this quest is about the <code>{tb}</code> table.",
     lab_describe: "Tip: <code>DESCRIBE mobs</code> shows a table's columns, <code>SHOW TABLES</code> lists all tables.",
@@ -805,6 +808,9 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    win_level: "¡Nivel {n} completado: {name}!",
+    win_chapter: "¡Capítulo {n} completado: {name}!",
+    next_chapter: "Siguiente capítulo",
     sql_use_describe: "Esta misión trata de <b>mirar primero la tabla</b>. Usa DESCRIBE: <code>DESCRIBE {tb}</code>",
     sql_describe_table: "Describiste <code>{got}</code>, pero esta misión trata de la tabla <code>{tb}</code>.",
     lab_describe: "Consejo: <code>DESCRIBE mobs</code> muestra las columnas de una tabla, <code>SHOW TABLES</code> lista todas las tablas.",
@@ -837,6 +843,9 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    win_level: "Level {n} geschafft: {name}!",
+    win_chapter: "Kapitel {n} geschafft: {name}!",
+    next_chapter: "Nächstes Kapitel",
     sql_use_describe: "In dieser Aufgabe geht es darum, <b>zuerst die Tabelle anzuschauen</b>. Nimm DESCRIBE: <code>DESCRIBE {tb}</code>",
     sql_describe_table: "Du hast <code>{got}</code> beschrieben, aber in dieser Aufgabe geht es um die Tabelle <code>{tb}</code>.",
     lab_describe: "Tipp: <code>DESCRIBE mobs</code> zeigt die Spalten einer Tabelle, <code>SHOW TABLES</code> listet alle Tabellen.",
