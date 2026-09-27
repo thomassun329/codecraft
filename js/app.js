@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=4');
+      this.worker = new Worker('js/py-worker.js?v=5');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -768,12 +768,33 @@
       return t('sqlerr_other', { x: esc(msg) });
     }
 
+    // Clicking a header only re-sorts the view; answers are checked on the query's own result.
+    let shownRes = null, sortCol = -1, sortDir = 1;
     function drawTable(res) {
-      if (!res) { $('#results').innerHTML = `<div class="muted">0 ${t('sql_rows', { n: '' }).trim()}</div>`; $('#rowsLabel').textContent = t('sql_rows', { n: 0 }); return; }
-      const rows = res.values.slice(0, 100);
+      if (res !== undefined) { shownRes = res; sortCol = -1; sortDir = 1; }
+      res = shownRes;
+      if (!res) { $('#results').innerHTML = `<div class="muted">${t('sql_rows', { n: 0 })}</div>`; $('#rowsLabel').textContent = t('sql_rows', { n: 0 }); return; }
+      let rows = res.values.slice();
+      if (sortCol >= 0) {
+        rows.sort((a, b) => {
+          const x = a[sortCol], y = b[sortCol];
+          if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+          return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * sortDir;
+        });
+      }
+      rows = rows.slice(0, 100);
       $('#rowsLabel').textContent = t('sql_rows', { n: res.values.length });
-      $('#results').innerHTML = `<table><thead><tr>${res.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map((r) => `<tr>${r.map((v) => `<td class="${typeof v === 'number' ? 'num' : ''}">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      const arrow = (i) => (i === sortCol ? (sortDir === 1 ? '▲' : '▼') : '⇅');
+      $('#results').innerHTML = `
+        <p class="sort-tip">${sortCol >= 0 ? t('sort_view_only', { col: esc(res.columns[sortCol]) }) : t('sort_tip')}</p>
+        <table><thead><tr>${res.columns.map((c, i) => `<th><button class="th-sort ${i === sortCol ? 'on' : ''}" data-col="${i}" title="${esc(t('sort_tip'))}">${esc(c)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead>
+        <tbody>${rows.map((r) => `<tr>${r.map((v, i) => `<td class="${typeof v === 'number' ? 'num' : ''} ${i === sortCol ? 'sorted' : ''}">${v === null ? '<i>NULL</i>' : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      $$('.th-sort').forEach((b) => b.onclick = () => {
+        const i = +b.dataset.col;
+        if (i === sortCol) sortDir = -sortDir; else { sortCol = i; sortDir = 1; }
+        Sound.play('click');
+        drawTable();
+      });
     }
 
     // Compare by result, not by text: any correct query counts.
@@ -822,7 +843,7 @@
       }
       const exp = db.exec(quest.answer)[0];
       db.close();
-      drawTable(res);
+      drawTable(res || null);
       const c = compare(res, exp, quest);
       if (!c.ok) {
         fb.innerHTML = `<p class="err">🤔 ${t(c.key, c.vars)}</p>`;

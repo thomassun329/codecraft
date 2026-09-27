@@ -407,6 +407,8 @@
   };
 
   Object.assign(S.en, {
+    sort_tip: '👆 Click a column name to sort the table.',
+    sort_view_only: 'Sorted by {col} — only the view. To sort the real result, use ORDER BY in your query.',
     parent_title: 'Parent view',
     parent_sub: 'What {name} has been doing in CodeCraft.',
     parent_local: 'Showing progress saved on this computer.',
@@ -421,6 +423,8 @@
     p_mobs: 'Mobdex', p_reset: 'Reset all progress', p_reset_confirm: 'Really delete all progress on this computer?',
   });
   Object.assign(S.es, {
+    sort_tip: '👆 Haz clic en el nombre de una columna para ordenar la tabla.',
+    sort_view_only: 'Ordenado por {col} — solo la vista. Para ordenar el resultado de verdad, usa ORDER BY en tu consulta.',
     parent_title: 'Vista para padres',
     parent_sub: 'Lo que {name} ha estado haciendo en CodeCraft.',
     parent_local: 'Mostrando el progreso guardado en este ordenador.',
@@ -435,6 +439,8 @@
     p_mobs: 'Mobdex', p_reset: 'Borrar todo el progreso', p_reset_confirm: '¿Seguro que quieres borrar todo el progreso de este ordenador?',
   });
   Object.assign(S.de, {
+    sort_tip: '👆 Klick auf einen Spaltennamen, um die Tabelle zu sortieren.',
+    sort_view_only: 'Sortiert nach {col} — nur die Ansicht. Um das echte Ergebnis zu sortieren, nimm ORDER BY in deiner Abfrage.',
     parent_title: 'Elternansicht',
     parent_sub: 'Was {name} in CodeCraft gemacht hat.',
     parent_local: 'Zeigt den Fortschritt, der auf diesem Computer gespeichert ist.',

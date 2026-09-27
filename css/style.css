@@ -313,3 +313,12 @@ pre.example { margin: 4px 0 0; padding: 10px 12px; background: #101216; border: 
   .main { padding: 16px; }
   .xpbar { width: 90px; }
 }
+
+/* sortable result headers */
+.sort-tip { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.th-sort { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; margin: -2px -6px; border-radius: 3px; }
+.th-sort span { color: var(--muted); font-size: 12px; }
+.th-sort:hover { background: rgba(255, 224, 138, .12); }
+.th-sort:hover span, .th-sort.on span { color: var(--gold); }
+.th-sort:focus-visible { outline: 2px solid var(--gold); }
+.table-wrap td.sorted { background: rgba(255, 224, 138, .05); }
