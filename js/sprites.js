@@ -25,6 +25,27 @@
     20: { pal: { o: '#e3862b', w: '#f5f0e6', k: '#222' }, px: ['oooooooo', 'owooooow', 'okwoowko', 'oooooooo', 'wwwkkwww', 'wwwwwwww', 'owwwwwwo', 'oooooooo'] },
   };
 
+
+  // 8x8 loot icons; '.' is transparent.
+  const ITEM_ART = {
+    1: { pal: { g: '#5c5c5c', G: '#8f8f8f', k: '#3a3a3a' }, px: ['........', '...GG...', '..GggG..', '.GgggkG.', '.gkgggg.', 'GggggkgG', 'gggkgggg', '........'] },
+    2: { pal: { r: '#8b4a2b', d: '#5e7a2a', l: '#b0643a' }, px: ['........', '..rrl...', '.rdrrr..', '.rrrdlr.', '..rlrrr.', '..rrdrr.', '...rrr..', '........'] },
+    3: { pal: { w: '#eeeadf', s: '#c9c2b0' }, px: ['......ww', '.....wsw', '....ww..', '...ww...', '..ww....', 'wws.....', 'ww......', '........'] },
+    4: { pal: { w: '#f2f2f2', s: '#bdbdbd' }, px: ['........', '.ww.....', 'w..w..ww', '....ws.w', '....w...', '...w....', '..ws....', '........'] },
+    5: { pal: { t: '#1f6f6a', c: '#35b5a8', l: '#8ff0e4' }, px: ['..tttt..', '.tcccct.', 'tcllccct', 'tclcccct', 'tcccccct', 'tcccccct', '.tcccct.', '..tttt..'] },
+    6: { pal: { y: '#f7c43a', o: '#e38b16' }, px: ['......yo', '.....yo.', '....yo..', '...yo...', '..yo....', '.yo.....', 'yo......', 'o.......'] },
+    7: { pal: { w: '#e8f6ff', b: '#9ed5f5' }, px: ['...ww...', '...ww...', '..wbbw..', '..wbbw..', '.wbbbbw.', '.wbbbbw.', '..wbbw..', '...ww...'] },
+    8: { pal: { k: '#1f1f1f', g: '#3d3d3d', s: '#5a5a5a' }, px: ['........', '..kgk...', '.kgskgk.', '.kkgkkgk', 'kgkkskk.', 'kkgkkg..', '.kkkk...', '........'] },
+    9: { pal: { s: '#7ec96b', d: '#5aa84a', l: '#b8f0a8' }, px: ['........', '..ssss..', '.slssss.', '.slsssd.', '.sssssd.', '.ssssdd.', '..sddd..', '........'] },
+    10: { pal: { t: '#0b2530', c: '#1ec8d2', d: '#123a4a' }, px: ['tttttttt', 'tdcddcdt', 'tddddddt', 'tcddddct', 'tddccddt', 'tdcddcdt', 'tddddddt', 'tttttttt'] },
+    11: { pal: { i: '#d9d9d9', s: '#a8a8a8', w: '#ffffff' }, px: ['........', '........', '..wiiii.', '.wiiiis.', 'wiiiiss.', 'sssss...', '........', '........'] },
+    12: { pal: { p: '#f0a5a2', r: '#d9645f', w: '#fff1ef' }, px: ['........', '..ppp...', '.pppprr.', '.pwpprr.', 'pppprrr.', 'pppprr..', '.ppp....', '........'] },
+    13: { pal: { r: '#c0392b', d: '#8e2a20', w: '#f5d0c8' }, px: ['........', '..rrr...', '.rrwrrd.', '.rrrrdd.', 'rrwrrdd.', 'rrrrdd..', '.rrr....', '........'] },
+    14: { pal: { w: '#f2f2f2', s: '#d6d6d6' }, px: ['wwswwsww', 'wswwswww', 'wwwswwsw', 'swwwwsww', 'wwswwwws', 'wswwswww', 'wwwswwsw', 'swwwwsww'] },
+    15: { pal: { w: '#fafafa', s: '#cfcfcf', k: '#8a8a8a' }, px: ['.....ww.', '....wws.', '...wwsw.', '..wwsw..', '.wwsw...', '.wsw....', 'k.......', '........'] },
+    16: { pal: { c: '#4fe3e0', l: '#c8fffd', d: '#1e9e9b' }, px: ['........', '..cccc..', '.clcccc.', 'clccccdd', '.ccccdd.', '..ccdd..', '...dd...', '........'] },
+  };
+
   const SKINS = {
     none: null, iron: '#d8d8d8', gold: '#f2c94c', diamond: '#4fe3e0',
   };
@@ -50,6 +71,7 @@
     const p = size / 8;
     art.px.forEach((row, ry) => {
       row.split('').forEach((ch, rx) => {
+        if (ch === '.') return;
         ctx.fillStyle = art.pal[ch] || '#000';
         ctx.fillRect(Math.floor(x + rx * p), Math.floor(y + ry * p), Math.ceil(p), Math.ceil(p));
       });
@@ -140,5 +162,5 @@
     return T;
   }
 
-  window.Sprites = { MOB_ART, SKINS, playerArt, drawArt, artCanvas, buildTextures };
+  window.Sprites = { MOB_ART, ITEM_ART, SKINS, playerArt, drawArt, artCanvas, buildTextures };
 })();

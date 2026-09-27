@@ -10,7 +10,7 @@
     return {
       v: 1, name: 'Miner', lang: 'en', skin: 'none', sound: true,
       welcomed: false, askedAccount: false,
-      levels: {}, mobs: [], days: [], updatedAt: Date.now(),
+      levels: {}, mobs: [], items: [], days: [], updatedAt: Date.now(),
     };
   }
 
@@ -46,6 +46,7 @@
       out.levels[id] = m;
     });
     out.mobs = [...new Set([...(a.mobs || []), ...(b.mobs || [])])];
+    out.items = [...new Set([...(a.items || []), ...(b.items || [])])];
     out.days = [...new Set([...(a.days || []), ...(b.days || [])])].sort();
     out.welcomed = a.welcomed || b.welcomed;
     return out;

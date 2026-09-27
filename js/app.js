@@ -10,7 +10,7 @@
   const D = () => P.data;
 
   // ---------------- XP, ranks, helmets ----------------
-  const RANK_XP = [0, 150, 350, 650, 1000, 1400];
+  const RANK_XP = [0, 250, 600, 1100, 1800, 2600];
   const SKIN_RANK = { none: 0, iron: 2, gold: 3, diamond: 4 };
   const ALL_LEVELS = () => [...PY_LEVELS, ...SQL_LEVELS];
 
@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=9');
+      this.worker = new Worker('js/py-worker.js?v=18');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -109,7 +109,7 @@
     .then((lib) => { SQLlib = lib; });
   function freshDB() {
     const db = new SQLlib.Database();
-    db.run(MOB_DB_SQL);
+    db.run(SQL_DB_SQL);
     return db;
   }
 
@@ -223,9 +223,9 @@
       const e = D().levels[l.id];
       const open = unlocked(track, i);
       const title = pick(l.text).title;
-      const cls = ['node', open ? 'open' : 'locked', e && e.done ? 'done' : '', l.boss ? 'boss' : '', kind].join(' ');
+      const cls = ['node', open ? 'open' : 'locked', e && e.done ? 'done' : '', l.boss || l.bonus ? 'boss' : '', kind].join(' ');
       const inner = `
-        <span class="node-block">${open ? (l.boss ? '👑' : i + 1) : '🔒'}</span>
+        <span class="node-block">${open ? (l.boss ? '👑' : l.bonus ? '⭐' : i + 1) : '🔒'}</span>
         <span class="node-title">${esc(title)}</span>
         <span class="node-stars">${e && (e.done || e.stars) ? starsHTML(e.stars) : ''}</span>`;
       return open ? `<a class="${cls}" href="#/${kind}/${l.id}">${inner}</a>` : `<span class="${cls}" title="${esc(t('locked'))}">${inner}</span>`;
@@ -246,7 +246,7 @@
           <div class="path">${SQL_LEVELS.map((l, i) => node(l, i, SQL_LEVELS, 'sql')).join('<span class="link"></span>')}</div>
           <a class="mobdex-teaser" href="#/mobdex">
             <span class="teaser-faces" id="teaserFaces"></span>
-            <span><b>📖 ${t('mobdex')}</b><small>${found} / ${MOBS.length}</small></span>
+            <span><b>📖 ${t('mobdex')}</b><small>${t('mobs_n', { n: found, total: MOBS.length })} · ${t('loot_n', { n: (D().items || []).length, total: ITEMS.length })}</small></span>
           </a>
         </div>
       </section>`;
@@ -746,31 +746,59 @@
     draw();
   }
 
-  // ---------------- SQL level screen ----------------
+  // ---------------- SQL chapters ----------------
+  const SQL_TABLE_NAMES = Object.keys(SQL_SCHEMA);
+  const SQL_ALL_COLS = [...new Set(Object.values(SQL_SCHEMA).flat().map(([c]) => c))];
+  const SQL_FUNCS = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'ROUND', 'UPPER', 'LOWER', 'LENGTH', 'RANK', 'ROW_NUMBER'];
+  const SQL_WORDS = ['SELECT', 'FROM', 'WHERE', 'ORDER', 'BY', 'LIMIT', 'DESC', 'ASC', 'AND', 'OR', 'NOT', 'IN', 'BETWEEN',
+    'LIKE', 'IS', 'NULL', 'AS', 'DISTINCT', 'GROUP', 'HAVING', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'JOIN', 'LEFT',
+    'INNER', 'ON', 'WITH', 'OVER', 'PARTITION', ...SQL_FUNCS];
+  // Every text value in the world, to spot "you forgot the quotes".
+  const SQL_VALUES = new Set([...SQL_DB_SQL.matchAll(/'([^']*)'/g)].map((m) => m[1].toLowerCase()));
+  const noStrings = (q) => q.replace(/'[^']*'/g, "''");
+  const has = (q, re) => re.test(noStrings(q));
+
+  function sqlStars(E, n) {
+    const clean = E.quests.filter((x) => x.done && !x.solutionSeen).length;
+    return clean === n ? 3 : clean >= Math.ceil((n * 2) / 3) ? 2 : 1;
+  }
+
+  function rewardCard(kind, id) {
+    const card = document.createElement('div');
+    card.className = 'mini-card pop';
+    const art = kind === 'mobs' ? Sprites.MOB_ART[id] : Sprites.ITEM_ART[id];
+    card.appendChild(Sprites.artCanvas(art, 48));
+    const name = kind === 'mobs' ? MOBS.find((x) => x.id === id).name : ITEMS.find((x) => x.id === id).name;
+    card.insertAdjacentHTML('beforeend', `<span>${esc(name)}</span>`);
+    return card;
+  }
+
   function sqlScreen(main, id) {
     const idx = SQL_LEVELS.findIndex((l) => l.id === id);
     if (!unlocked(SQL_LEVELS, idx)) { location.hash = '#/'; return; }
     const L = SQL_LEVELS[idx];
-    const tx = pick(L.text);
+    const ch = pick(L.text);
     const E = P.level(id);
-    if (!E.quests) E.quests = L.quests.map(() => ({ done: false, attempts: 0, solutionSeen: false }));
+    if (!E.quests || E.quests.length !== L.quests.length) E.quests = L.quests.map(() => ({ done: false, attempts: 0, solutionSeen: false }));
     E.lastPlayed = Date.now();
     P.save();
+    const open = (i) => i === 0 || E.quests[i - 1].done;
     let qi = E.quests.findIndex((q) => !q.done);
     if (qi === -1) qi = 0;
-    let hintIdx = 0;
+    let hintStep = 0;
+    const badge = L.boss ? '👑' : L.bonus ? '⭐' : idx + 1;
 
     main.innerHTML = `
       <div class="level">
         <div class="lv-top">
           <a class="btn ghost small" href="#/">← ${t('back')}</a>
-          <h1><span class="lv-num sql ${L.boss ? 'boss' : ''}">${L.boss ? '👑' : idx + 1}</span>${esc(tx.title)}</h1>
-          <a class="btn ghost small" href="#/mobdex">📖 ${t('mobdex')} ${D().mobs.length}/${MOBS.length}</a>
+          <h1><span class="lv-num sql ${L.boss || L.bonus ? 'boss' : ''}">${badge}</span>${esc(ch.title)}</h1>
+          <a class="btn ghost small" href="#/mobdex">📖 ${t('mobdex')}</a>
         </div>
         <div class="lv-grid">
           <section class="col col-info">
-            <div class="card"><h3>📜 ${t('story')}</h3><p>${tx.story}</p></div>
-            <div class="card lesson"><h3>💡 ${t('lesson')}</h3><p>${tx.lesson}</p><div class="ex-label">${t('example')}</div><pre class="example cm-s-codecraft" id="example"></pre></div>
+            <div class="card chapter-card"><h3>📜 ${t('story')}</h3><p>${ch.story}</p></div>
+            <div class="card lesson" id="lesson"></div>
           </section>
           <section class="col col-code">
             <div class="card quest" id="quest"></div>
@@ -784,14 +812,13 @@
           </section>
           <section class="col col-world">
             <div class="card results"><h3>📊 <span id="rowsLabel">${t('output')}</span></h3><div class="table-wrap" id="results"><div class="muted">${t('output_empty')}</div></div></div>
-            <div class="card schema"><h3>🗂 ${t('schema')}</h3>
-              <div class="schema-cols">${MOB_SCHEMA.map(([c, ty]) => `<span><code>${c}</code><small>${ty}</small></span>`).join('')}</div>
+            <div class="card schema"><h3>🗂 ${t('tables')}</h3>
+              ${L.tables.map((tb) => `<div class="schema-table"><b><code>${tb}</code></b><div class="schema-cols">${SQL_SCHEMA[tb].map(([c, ty]) => `<span><code>${c}</code><small>${ty}</small></span>`).join('')}</div></div>`).join('')}
             </div>
           </section>
         </div>
       </div>`;
 
-    CodeMirror.runMode(tx.example, 'text/x-sqlite', $('#example'));
     const startCode = E.code != null ? E.code : (L.quests[0].starter || 'SELECT ');
     const cm = makeEditor($('#code'), 'text/x-sqlite', startCode, () => run(), (v) => {
       E.code = v; clearTimeout(saveT); saveT = setTimeout(() => P.save(), 800);
@@ -802,7 +829,6 @@
     const onwardLink = () => (nextLevel && unlocked(SQL_LEVELS, idx + 1)
       ? `<a class="btn" href="#/sql/${nextLevel.id}">${t('next')} →</a>`
       : `<a class="btn" href="#/mobdex">📖 ${t('mobdex')}</a>`) + ` <a class="btn ghost" href="#/">${t('to_map')}</a>`;
-    // Where to go from here: the next unsolved quest, or on to the next level.
     function onward() {
       const n = E.quests.findIndex((x) => !x.done);
       if (n !== -1 && n !== qi) return `<button class="btn" data-goq="${n}">${t('sql_next')} →</button>`;
@@ -811,18 +837,24 @@
     }
 
     function goQuest(n) {
-      qi = n; hintIdx = 0;
+      if (!open(n)) return;
+      qi = n; hintStep = 0;
       $('#hintBox').hidden = true; $('#hintBtn').disabled = false; $('#fb').innerHTML = '';
+      const st = L.quests[n].starter;
+      if (st && !E.quests[n].done) cm.setValue(st);
       drawQuest();
     }
 
     function drawQuest() {
-      const q = E.quests[qi];
+      const quest = L.quests[qi], q = E.quests[qi], tx = pick(quest.text);
+      $('#lesson').innerHTML = `<h3>💡 ${t('new_idea')}: ${esc(tx.idea)}</h3><p>${tx.lesson}</p>` +
+        (quest.example ? `<div class="ex-label">${t('example')}</div><pre class="example cm-s-codecraft" id="example"></pre>` : '');
+      if (quest.example) CodeMirror.runMode(quest.example, 'text/x-sqlite', $('#example'));
       $('#quest').innerHTML = `
         <div class="quest-top"><h3>🗡 ${t('quest', { i: qi + 1, n: L.quests.length })}</h3>
-          <div class="quest-dots">${E.quests.map((x, i) => `<button class="qdot ${x.done ? 'done' : ''} ${i === qi ? 'on' : ''}" data-q="${i}">${x.done ? '✓' : i + 1}</button>`).join('')}</div>
+          <div class="quest-dots">${E.quests.map((x, i) => `<button class="qdot ${x.done ? 'done' : ''} ${i === qi ? 'on' : ''}" data-q="${i}" ${open(i) ? '' : `disabled title="${esc(t('quest_locked'))}"`}>${x.done ? '✓' : open(i) ? i + 1 : '🔒'}</button>`).join('')}</div>
         </div>
-        <p>${tx.quests[qi]}</p>
+        <p>${tx.task}</p>
         ${q.done ? `<p class="ok">✅ ${t('quest_done')}</p><div class="quest-onward">${onward()}</div>` : ''}`;
       $$('[data-goq]', $('#quest')).forEach((b) => b.onclick = () => goQuest(+b.dataset.goq));
       $$('[data-q]').forEach((b) => b.onclick = () => goQuest(+b.dataset.q));
@@ -830,52 +862,58 @@
     drawQuest();
 
     $('#runBtn').onclick = () => run();
+    // First click: the quest's hint. Second: the solution (costs this quest's star).
     $('#hintBtn').onclick = () => {
-      const box = $('#hintBox');
-      if (hintIdx >= tx.hints.length) return;
-      hintIdx++;
-      E.hints = Math.max(E.hints || 0, hintIdx);
+      const box = $('#hintBox'), quest = L.quests[qi], tx = pick(quest.text);
+      hintStep++;
+      E.hints = (E.hints || 0) + 1;
       P.save();
       box.hidden = false;
-      box.innerHTML = tx.hints.slice(0, hintIdx).map((h, i) => `<p><b>💡 ${i + 1}.</b> ${h}</p>`).join('') +
-        (hintIdx === tx.hints.length ? `<button class="btn ghost small" id="solBtn">🔑 ${t('solution')}</button>` : '');
-      const sb = $('#solBtn');
-      if (sb) sb.onclick = () => {
+      box.innerHTML = `<p><b>💡</b> ${tx.hint}</p><button class="btn ghost small" id="solBtn">🔑 ${t('solution')}</button>`;
+      $('#hintBtn').disabled = true;
+      $('#solBtn').onclick = () => {
         const q = E.quests[qi];
         if (!q.solutionSeen && !q.done && !confirm(t('solution_confirm'))) return;
-        q.solutionSeen = !q.done || q.solutionSeen;
+        if (!q.done) q.solutionSeen = true;
         E.solutionSeen = true;
         P.save();
-        sb.outerHTML = `<pre class="example cm-s-codecraft" id="solPre"></pre>`;
-        CodeMirror.runMode(L.quests[qi].answer, 'text/x-sqlite', $('#solPre'));
+        $('#solBtn').outerHTML = `<pre class="example cm-s-codecraft" id="solPre"></pre>`;
+        CodeMirror.runMode(quest.answer, 'text/x-sqlite', $('#solPre'));
       };
-      if (hintIdx === tx.hints.length) $('#hintBtn').disabled = true;
     };
 
-    const SQL_WORDS = ['SELECT', 'FROM', 'WHERE', 'ORDER', 'BY', 'LIMIT', 'DESC', 'ASC', 'AND', 'OR', 'NOT', 'COUNT'];
-    const COLS = MOB_SCHEMA.map(([c]) => c);
-
+    // ---- errors from SQLite, translated into what to do
     function sqlError(msg, code) {
       let m;
-      const bare = code.replace(/'[^']*'/g, "''");
-      const values = new Set(MOBS.flatMap((x) => [x.type, x.home, x.loot, x.name.toLowerCase()]));
+      const bare = noStrings(code);
+      const aliases = new Set([...bare.matchAll(/\bas\s+([a-z_]+)/gi), ...bare.matchAll(/\b(?:from|join)\s+[a-z_]+\s+(?:as\s+)?([a-z_]+)/gi)].map((x) => x[1].toLowerCase()));
+      if (has(code, /\bcase\b/i) && !has(code, /\bend\b/i)) return t('sqlerr_case_end');
+      if (has(code, /\bcase\b/i) && (bare.match(/\bwhen\b/gi) || []).length !== (bare.match(/\bthen\b/gi) || []).length) return t('sqlerr_case_then');
       if ((m = msg.match(/no such column: (\S+)/))) {
-        const x = m[1];
-        if (values.has(x.toLowerCase())) return t('sqlerr_column', { x: esc(x) }) + ' ' + t('sqlerr_text_quote');
-        const near = closest(x, COLS);
-        if (near) return t('sqlerr_column_typo', { x: esc(x), fix: near });
-        return t('sqlerr_column', { x: esc(x) });
+        const full = m[1], parts = full.split('.'), col = parts.pop(), pre = parts.pop();
+        if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) return t('sqlerr_alias_missing', { p: esc(pre), col: esc(col) });
+        if (SQL_VALUES.has(col.toLowerCase())) return t('sqlerr_column', { x: esc(col) }) + ' ' + t('sqlerr_text_quote');
+        const near = closest(col, SQL_ALL_COLS);
+        if (near && near !== col) return t('sqlerr_column_typo', { x: esc(full), fix: (pre ? pre + '.' : '') + near });
+        return t('sqlerr_column', { x: esc(full) });
       }
-      if ((m = msg.match(/no such table: (\S+)/))) return t('sqlerr_table', { x: esc(m[1]) });
-      if ((m = msg.match(/no such function: (\w+)/))) return t('sqlerr_function', { x: esc(m[1]), fix: closest(m[1], ['COUNT', 'MAX', 'MIN', 'SUM', 'AVG'], 3) || 'COUNT' });
+      if ((m = msg.match(/ambiguous column name: (\S+)/))) {
+        const col = m[1];
+        const inT = L.tables.filter((tb) => SQL_SCHEMA[tb].some(([c]) => c === col));
+        return t('sqlerr_ambiguous', { x: esc(col), opts: inT.map((tb) => `<code>${tb}.${esc(col)}</code>`).join(' / ') });
+      }
+      if ((m = msg.match(/no such table: (\S+)/))) return t('sqlerr_table', { x: esc(m[1]), list: L.tables.map((tb) => `<code>${tb}</code>`).join(', ') });
+      if ((m = msg.match(/no such function: (\w+)/))) return t('sqlerr_function', { x: esc(m[1]), fix: closest(m[1], SQL_FUNCS, 3) || 'COUNT' });
+      if (/misuse of aggregate/.test(msg)) return t('sqlerr_aggregate');
+      if (/GROUP BY clause is required before HAVING|HAVING clause on a non-aggregate/i.test(msg)) return t('sqlerr_having_group');
       if (/unrecognized token: "'/.test(msg)) return t('sqlerr_unterminated');
       if (/,\s*from\b/i.test(bare)) return t('sqlerr_trailing_comma');
       if (/\border\s+(?!by\b)/i.test(bare)) return t('sqlerr_order_by');
-      // A misspelled keyword anywhere (e.g. FORM, WHER, DSC), ignoring real column/table names.
+      if (/\bgroup\s+(?!by\b)/i.test(bare)) return t('sqlerr_group_by');
       const words = bare.match(/[A-Za-z_]+/g) || [];
       for (const w of words) {
-        const up = w.toUpperCase();
-        if (w.length < 3 || SQL_WORDS.includes(up) || COLS.includes(w.toLowerCase()) || w.toLowerCase() === 'mobs') continue;
+        const lw = w.toLowerCase(), up = w.toUpperCase();
+        if (w.length < 3 || SQL_WORDS.includes(up) || SQL_ALL_COLS.includes(lw) || SQL_TABLE_NAMES.includes(lw) || aliases.has(lw)) continue;
         const near = closest(up, SQL_WORDS);
         if (near) return t('sqlerr_typo', { x: esc(w), fix: near });
       }
@@ -916,101 +954,128 @@
       });
     }
 
-    // Which mob columns appear in a clause (WHERE … / ORDER BY …) of a query.
+    // Which columns appear in one clause (WHERE … / ORDER BY …) of a query.
     const colsIn = (q, clause) => {
-      const m = q.replace(/'[^']*'/g, "''").match(new RegExp('\\b' + clause + '\\b([\\s\\S]*?)(\\border\\b|\\blimit\\b|$)', 'i'));
-      return m ? COLS.filter((c) => new RegExp('\\b' + c + '\\b', 'i').test(m[1])) : [];
+      const m = noStrings(q).match(new RegExp('\\b' + clause + '\\b([\\s\\S]*?)(\\bgroup\\b|\\bhaving\\b|\\border\\b|\\blimit\\b|$)', 'i'));
+      return m ? SQL_ALL_COLS.filter((c) => new RegExp('\\b' + c + '\\b', 'i').test(m[1])) : [];
     };
+    const norm = (c) => c.toLowerCase().replace(/\s+/g, '').replace(/\b[a-z_]+\./g, '');
+    const plain = (c) => /^[a-z_]+$/.test(norm(c));
+    const label = (c) => (plain(c) ? norm(c) : /^case/i.test(c) ? 'CASE … END' : c);
+    const list = (arr) => arr.map((c) => `<code>${esc(label(c))}</code>`).join(', ');
+    const rowKey = (r) => JSON.stringify(r.map((v) => (v === null ? 'NULL' : String(v))).sort());
 
     // Compare by result, not by text, and when it's wrong, say *what kind* of wrong.
     function compare(got, exp, quest, code) {
-      // No result set at all means zero rows; its columns are unknown, so skip that check.
       const g = got || { columns: exp.columns, values: [] };
-      const norm = (c) => c.toLowerCase().replace(/\s+/g, '');
-      const namesMatch = g.columns.length === exp.columns.length && exp.columns.every((c) => g.columns.map(norm).includes(norm(c)));
-      if (g.columns.length !== exp.columns.length) return columnProblem(g, exp, code);
-      // Cells are sorted within each row so "health, name" counts the same as "name, health".
-      const key = (r) => JSON.stringify(r.map((v) => (v === null ? 'NULL' : String(v))).sort());
-      const a = g.values.map(key).sort(), b = exp.values.map(key).sort();
+      const G = g.columns.map(norm), X = exp.columns.map(norm);
+      const namesMatch = G.length === X.length && X.every((c) => G.includes(c));
+      if (G.length !== X.length) return columnProblem(g, exp, quest, code) || { ok: false, key: 'sql_cols', vars: { got: G.length, exp: X.length } };
+      const a = g.values.map(rowKey).sort(), b = exp.values.map(rowKey).sort();
       const same = a.length === b.length && a.every((x, i) => x === b[i]);
-      // Different column names but identical data (e.g. an alias with AS) still counts.
-      if (!same && !namesMatch) return columnProblem(g, exp, code);
+      if (same && quest.requireNames && !namesMatch) return { ok: false, key: 'sql_alias', vars: { cols: list(exp.columns.filter((c) => !G.includes(norm(c)))) } };
+      if (!same && !namesMatch && !quest.freeNames) { const cp = columnProblem(g, exp, quest, code); if (cp) return cp; }
       if (!same) return diagnose(g, a, b, quest, code);
       if (quest.orderCol !== undefined) {
-        const want = exp.columns[quest.orderCol].toLowerCase();
-        const gi = g.columns.findIndex((c) => c.toLowerCase() === want);
+        const want = X[quest.orderCol];
+        const gi = G.indexOf(want);
         const col = gi === -1 ? quest.orderCol : gi;
         const seqG = g.values.map((r) => String(r[col]));
         const seqE = exp.values.map((r) => String(r[quest.orderCol]));
         if (seqG.some((x, i) => x !== seqE[i])) {
-          const want = colsIn(quest.answer, 'order\\s+by'), have = colsIn(code, 'order\\s+by');
-          if (!/\border\s+by\b/i.test(code)) return { ok: false, key: 'sql_order_missing' };
-          const wrong = have.find((c) => !want.includes(c));
-          if (wrong) return { ok: false, key: 'sql_order_col', vars: { got: wrong, exp: want[0] } };
-          if (/\bdesc\b/i.test(quest.answer) && !/\bdesc\b/i.test(code)) return { ok: false, key: 'sql_need_desc_all' };
+          if (!has(code, /\border\s+by\b/i)) return { ok: false, key: 'sql_order_missing' };
+          const wantC = colsIn(quest.answer, 'order\\s+by'), haveC = colsIn(code, 'order\\s+by');
+          const wrong = haveC.find((c) => !wantC.includes(c));
+          if (wrong) return { ok: false, key: 'sql_order_col', vars: { got: wrong, exp: wantC[0] } };
+          if (has(quest.answer, /\bdesc\b/i) && !has(code, /\bdesc\b/i)) return { ok: false, key: 'sql_need_desc_all' };
           return { ok: false, key: 'sql_order' };
         }
       }
       return { ok: true };
     }
 
-    function columnProblem(g, exp, code) {
-      const norm = (c) => c.toLowerCase().replace(/\s+/g, '');
+    function columnProblem(g, exp, quest, code) {
       const G = g.columns.map(norm), X = exp.columns.map(norm);
-      const list = (arr) => arr.map((c) => `<code>${esc(c)}</code>`).join(', ');
-      if (X.some((c) => c.startsWith('count(')) && !G.some((c) => c.startsWith('count('))) return { ok: false, key: 'sql_need_count' };
-      if (/select\s+\*/i.test(code) && !X.includes('*')) return { ok: false, key: 'sql_star', vars: { n: G.length, cols: list(exp.columns) } };
+      if (X.some((c) => c.startsWith('count(')) && !G.some((c) => c.startsWith('count('))) return { ok: false, key: exp.values.length > 1 ? 'sql_need_count_group' : 'sql_need_count' };
+      if (has(code, /select\s+(distinct\s+)?\*/i) && !has(quest.answer, /select\s+\*/i) && G.length > X.length) return { ok: false, key: 'sql_star', vars: { n: G.length, cols: list(exp.columns) } };
       const missing = exp.columns.filter((c) => !G.includes(norm(c)));
       const extra = g.columns.filter((c) => !X.includes(norm(c)));
-      const clause = (code.match(/select\s+([\s\S]*?)\s+from\b/i) || [])[1] || '';
-      if (missing.length && G.length < X.length && /[a-z_]\s+[a-z_]/i.test(clause) && !/\bas\b/i.test(clause)) return { ok: false, key: 'sql_missing_comma' };
+      if (quest.freeNames || missing.some((c) => !plain(c)) || extra.some((c) => !plain(c))) {
+        return G.length !== X.length ? { ok: false, key: 'sql_cols_count', vars: { got: G.length, exp: X.length, cols: list(exp.columns) } } : null;
+      }
+      const clause = (noStrings(code).match(/select\s+([\s\S]*?)\s+from\b/i) || [])[1] || '';
+      if (missing.length && G.length < X.length && /[a-z_]\s+[a-z_]/i.test(clause.replace(/\bdistinct\b/i, '')) && !/\bas\b/i.test(clause)) return { ok: false, key: 'sql_missing_comma' };
       if (missing.length && extra.length) return { ok: false, key: 'sql_swap_cols', vars: { need: list(missing), have: list(extra) } };
       if (missing.length) return { ok: false, key: 'sql_missing_col', vars: { cols: list(missing) } };
       if (extra.length) return { ok: false, key: 'sql_extra_col', vars: { cols: list(extra) } };
-      return { ok: false, key: 'sql_cols', vars: { got: g.columns.length, exp: exp.columns.length } };
+      return null;
     }
 
     function diagnose(g, gotKeys, expKeys, quest, code) {
+      const A = quest.answer;
+      const vars = { got: gotKeys.length, exp: expKeys.length };
+      // 1. Joins
+      if (has(A, /\bleft\s+join\b/i) && !has(code, /\bleft\s+join\b/i)) return { ok: false, key: 'sql_need_left' };
+      if (has(code, /(!=|<>|=)\s*null\b/i)) return { ok: false, key: 'sql_is_null' };
+      if (has(code, /\bjoin\b/i) && !has(code, /\bon\b/i)) return { ok: false, key: 'sql_join_on', vars };
+      if (has(code, /\bjoin\b/i) && !gotKeys.length && expKeys.length) return { ok: false, key: 'sql_join_key' };
+      // 2. Text values
       const lits = (q) => [...q.matchAll(/'([^']*)'/g)].map((m) => m[1]);
-      const gotL = lits(code), expL = lits(quest.answer);
-      // 1. A text value in the filter that the quest doesn't ask for.
+      const gotL = lits(code), expL = lits(A), isCase = has(A, /\bcase\b/i);
       for (const w of gotL) {
         if (expL.includes(w)) continue;
+        const pct = expL.find((e) => e.includes('%') && e.replace(/%/g, '').toLowerCase() === w.replace(/%/g, '').toLowerCase());
+        if (pct) return { ok: false, key: 'sql_like_percent', vars: { exp: esc(pct) } };
         const cased = expL.find((e) => e.toLowerCase() === w.toLowerCase());
         if (cased) return { ok: false, key: 'sql_case', vars: { got: esc(w), exp: esc(cased) } };
+        if (isCase) return { ok: false, key: 'sql_case_label', vars: { got: esc(w), labels: expL.filter((e) => !/^\s/.test(e)).map((e) => `<code>'${esc(e)}'</code>`).join(', ') } };
         const missing = expL.find((e) => !gotL.includes(e));
         if (missing) return { ok: false, key: 'sql_wrong_value', vars: { got: esc(w), exp: esc(missing) } };
       }
-      // 2. The rule checks a different column than the quest is about.
+      if (!isCase && expL.length > 1 && gotL.length) {
+        const miss = expL.find((e) => !gotL.includes(e));
+        if (miss) return { ok: false, key: has(A, /\bin\s*\(/i) ? 'sql_missing_value' : 'sql_missing_rule', vars: { exp: esc(miss) } };
+      }
+      // 3. Groups
+      if (has(A, /\bgroup\s+by\b/i) && !has(code, /\bgroup\s+by\b/i)) return { ok: false, key: 'sql_need_group', vars: { col: esc((noStrings(A).match(/group\s+by\s+([\w.]+)/i) || [])[1] || '') } };
+      if (has(A, /\bhaving\b/i) && !has(code, /\bhaving\b/i) && gotKeys.length > expKeys.length) return { ok: false, key: 'sql_need_having' };
+      // 4. DISTINCT / ROUND
+      if (has(A, /\bdistinct\b/i) && !has(code, /\bdistinct\b/i)) return { ok: false, key: expKeys.length === 1 && g.columns.length === 1 ? 'sql_need_distinct_count' : 'sql_need_distinct' };
+      if (has(A, /\bround\s*\(/i) && !has(code, /\bround\s*\(/i)) return { ok: false, key: 'sql_need_round' };
+      // 5. The rule checks a different column than the quest is about
       for (const clause of ['where', 'order\\s+by']) {
-        const want = colsIn(quest.answer, clause), have = colsIn(code, clause);
-        const wrong = have.find((c) => !want.includes(c));
+        const want = colsIn(A, clause), haveC = colsIn(code, clause);
+        const wrong = haveC.find((c) => !want.includes(c));
         if (want.length && wrong) return { ok: false, key: clause === 'where' ? 'sql_where_col' : 'sql_order_col', vars: { got: wrong, exp: want[0] } };
       }
-      // 3. A count that came out as the wrong number.
+      // 6. One number that came out wrong
       if (g.values.length === 1 && expKeys.length === 1 && g.columns.length === 1) {
-        const hasW = /\bwhere\b/i.test(code), needW = /\bwhere\b/i.test(quest.answer);
-        return { ok: false, key: needW && !hasW ? 'sql_count_all' : 'sql_count_wrong', vars: { got: esc(g.values[0][0]) } };
+        const needW = has(A, /\bwhere\b/i) && !has(code, /\bwhere\b/i);
+        return { ok: false, key: needW ? 'sql_count_all' : 'sql_count_wrong', vars: { got: esc(g.values[0][0]) } };
       }
-      // 4. Sorted the wrong way (or not at all) before a LIMIT.
-      if (/\border\s+by\b/i.test(quest.answer) && !/\border\s+by\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_order' };
-      if (/\bdesc\b/i.test(quest.answer) && !/\bdesc\b/i.test(code) && /\blimit\b/i.test(code)) return { ok: false, key: 'sql_need_desc' };
-      // 5. Compare the rows as sets: extra rows, missing rows, or just different.
+      // 7. Sorting before a LIMIT
+      if (has(A, /\border\s+by\b/i) && !has(code, /\border\s+by\b/i) && has(code, /\blimit\b/i)) return { ok: false, key: 'sql_need_order' };
+      if (has(A, /\bdesc\b/i) && !has(code, /\bdesc\b/i) && has(code, /\blimit\b/i)) return { ok: false, key: 'sql_need_desc' };
+      // 8. The rows as sets: extra, missing, or different
       const count = (arr) => arr.reduce((m, k) => m.set(k, (m.get(k) || 0) + 1), new Map());
-      const G = count(gotKeys), E = count(expKeys);
-      const within = (A, B) => [...A].every(([k, n]) => (B.get(k) || 0) >= n);
-      const vars = { got: gotKeys.length, exp: expKeys.length };
-      const hasWhere = /\bwhere\b/i.test(code), needsWhere = /\bwhere\b/i.test(quest.answer);
-      const needsLimit = /\blimit\b/i.test(quest.answer) && !/\blimit\b/i.test(code);
-      if (within(E, G) && gotKeys.length > expKeys.length) {
+      const Gm = count(gotKeys), Em = count(expKeys);
+      const within = (P1, P2) => [...P1].every(([k, n]) => (P2.get(k) || 0) >= n);
+      const hasWhere = has(code, /\bwhere\b/i), needsWhere = has(A, /\bwhere\b/i);
+      if (within(Em, Gm) && gotKeys.length > expKeys.length) {
         if (needsWhere && !hasWhere) return { ok: false, key: 'sql_no_where', vars };
-        if (needsLimit) return { ok: false, key: 'sql_need_limit', vars };
+        if (has(A, /\blimit\b/i) && !has(code, /\blimit\b/i)) return { ok: false, key: 'sql_need_limit', vars };
+        // Fewer conditions than the answer (not counting the AND inside BETWEEN).
+        const rules = (q) => ((noStrings(q).match(/\bwhere\b([\s\S]*?)(\bgroup\b|\border\b|\blimit\b|\)|$)/i) || [])[1] || '').replace(/between\s+\S+\s+and/gi, '').split(/\band\b/i).length;
+        if (hasWhere && rules(code) < rules(A)) return { ok: false, key: 'sql_need_more_rules', vars };
         return { ok: false, key: 'sql_too_many', vars };
       }
-      if (within(G, E) && gotKeys.length < expKeys.length) {
+      if (within(Gm, Em) && gotKeys.length < expKeys.length) {
         if (!needsWhere && hasWhere) return { ok: false, key: 'sql_no_where_needed', vars };
         return { ok: false, key: 'sql_too_few', vars };
       }
+      if (isCase) return { ok: false, key: 'sql_case_values' };
+      if (has(A, /\bover\s*\([^)]*\bdesc\b/i) && !has(code, /\bover\s*\([^)]*\bdesc\b/i)) return { ok: false, key: 'sql_window_desc' };
+      if (has(A, /\bover\s*\(/i)) return { ok: false, key: 'sql_window_values' };
       if (gotKeys.length !== expKeys.length) return { ok: false, key: 'sql_rows_n', vars };
       return { ok: false, key: 'sql_values' };
     }
@@ -1019,9 +1084,9 @@
       const fb = $('#fb');
       const code = cm.getValue().trim().replace(/;\s*$/, '');
       if (!code) { fb.innerHTML = `<p class="warn">${t('sql_empty')}</p>`; return; }
-      if (/;\s*\S/.test(code)) { fb.innerHTML = `<p class="warn">${t('sql_multi')}</p>`; return; }
-      if (!/\bfrom\b/i.test(code.replace(/'[^']*'/g, ''))) {
-        const typo = (code.replace(/'[^']*'/g, '').match(/[A-Za-z]+/g) || []).find((w) => w.length >= 3 && editDist(w.toUpperCase(), 'FROM') <= 2 && !COLS.includes(w.toLowerCase()));
+      if (/;\s*\S/.test(noStrings(code))) { fb.innerHTML = `<p class="warn">${t('sql_multi')}</p>`; return; }
+      if (!has(code, /\bfrom\b/i)) {
+        const typo = (noStrings(code).match(/[A-Za-z]+/g) || []).find((w) => w.length >= 3 && editDist(w.toUpperCase(), 'FROM') <= 2 && !SQL_ALL_COLS.includes(w.toLowerCase()) && !SQL_WORDS.includes(w.toUpperCase()));
         fb.innerHTML = `<p class="err">❌ ${typo ? t('sqlerr_typo', { x: esc(typo), fix: 'FROM' }) : t('sqlerr_no_from')}</p>`;
         return;
       }
@@ -1038,8 +1103,9 @@
         res = out[out.length - 1];
       } catch (e) {
         db.close();
-        fb.innerHTML = `<p class="err">❌ ${sqlError(e.message, code)}</p>`;
-        E.lastError = { key: 'sqlerr_other', vars: { x: e.message } };
+        const text = sqlError(e.message, code);
+        fb.innerHTML = `<p class="err">❌ ${text}</p>`;
+        E.lastError = { key: 'sqlerr_other', vars: { x: text.replace(/<[^>]+>/g, '') } };
         Sound.play('fail');
         P.save();
         return;
@@ -1059,29 +1125,28 @@
       const wasDone = q.done;
       q.done = true;
       E.lastError = null;
-      const newMobs = quest.unlock.filter((mid) => !D().mobs.includes(mid));
+      const unlock = quest.unlock || {};
+      const newMobs = (unlock.mobs || []).filter((m) => !D().mobs.includes(m));
+      const newItems = (unlock.items || []).filter((m) => !(D().items || []).includes(m));
       D().mobs.push(...newMobs);
+      D().items = [...(D().items || []), ...newItems];
       const allDone = E.quests.every((x) => x.done);
-      const stars = E.quests.filter((x) => x.done && !x.solutionSeen).length;
-      if (allDone) { E.stars = Math.max(E.stars || 0, stars); }
+      if (allDone) E.stars = Math.max(E.stars || 0, sqlStars(E, L.quests.length));
       const firstFinish = allDone && !E.done;
       if (allDone) E.done = true;
       P.save();
       renderHeader();
-      Sound.play(newMobs.length ? 'unlock' : 'win');
+      const gained = newMobs.length + newItems.length;
+      Sound.play(gained ? 'unlock' : 'win');
       const nextQ = E.quests.findIndex((x) => !x.done);
       fb.innerHTML = `<div class="correct"><p class="ok">✅ ${t('sql_correct')} ${!wasDone && totalXP() > xpBefore ? `<b class="xp-gain">${t('xp_gain', { n: totalXP() - xpBefore })}</b>` : ''}</p>
-        ${newMobs.length ? `<p>${t('sql_unlocked')}</p><div class="unlock-strip" id="strip"></div>` : ''}
+        ${gained ? `<p>${t('sql_unlocked')}</p><div class="unlock-strip" id="strip"></div>` : ''}
         <div class="quest-onward">${nextQ !== -1 ? `<button class="btn" id="nextQ">${t('sql_next')} →</button>` : onwardLink()}</div></div>`;
-      if (newMobs.length) {
+      if (gained) {
         const strip = $('#strip');
-        newMobs.forEach((mid, i) => {
-          const mob = MOBS.find((x) => x.id === mid);
-          const card = document.createElement('div');
-          card.className = 'mini-card pop';
+        [...newMobs.map((m) => ['mobs', m]), ...newItems.map((m) => ['items', m])].forEach(([k, m], i) => {
+          const card = rewardCard(k, m);
           card.style.animationDelay = i * 0.15 + 's';
-          card.appendChild(Sprites.artCanvas(Sprites.MOB_ART[mid], 48));
-          card.insertAdjacentHTML('beforeend', `<span>${esc(mob.name)}</span>`);
           strip.appendChild(card);
         });
       }
@@ -1108,6 +1173,9 @@
         <div class="lv-top"><a class="btn ghost small" href="#/">← ${t('back')}</a><h1>📖 ${t('mobdex')}</h1><span></span></div>
         <p class="muted center">${t('mobdex_sub', { n: found.length, total: MOBS.length })}</p>
         <div class="mob-grid" id="grid"></div>
+        <h2 class="section-title">🎁 ${t('loot')}</h2>
+        <p class="muted center">${t('loot_sub', { n: (D().items || []).length, total: ITEMS.length })}</p>
+        <div class="mob-grid" id="lootGrid"></div>
       </div>`;
     const grid = $('#grid');
     MOBS.forEach((m) => {
@@ -1122,9 +1190,24 @@
           <dt>❤ ${t('mob_health')}</dt><dd>${m.health}</dd>
           <dt>⚔ ${t('mob_damage')}</dt><dd>${m.damage}</dd>
           <dt>🏠 ${t('mob_home')}</dt><dd>${esc(m.home)}</dd>
-          <dt>🎁 ${t('mob_loot')}</dt><dd>${esc(m.loot)}</dd>
+          <dt>🎁 ${t('mob_loot')}</dt><dd>${m.loot ? esc(m.loot) : '—'}</dd>
         </dl>` : `<h3>???</h3><span class="badge">#${m.id}</span>`);
       grid.appendChild(card);
+    });
+    const lootGrid = $('#lootGrid'), gotItems = D().items || [];
+    ITEMS.forEach((it) => {
+      const have = gotItems.includes(it.id);
+      const card = document.createElement('div');
+      card.className = 'mob-card ' + (have ? 'rarity-' + it.rarity : 'locked');
+      card.appendChild(Sprites.artCanvas(Sprites.ITEM_ART[it.id], 72, !have));
+      card.insertAdjacentHTML('beforeend', have ? `
+        <h3>${esc(it.name)}</h3>
+        <span class="badge">${esc(it.rarity)}</span>
+        <dl>
+          <dt>💎 ${t('item_value')}</dt><dd>${it.value}</dd>
+          <dt>🔨 ${t('item_used')}</dt><dd>${esc(it.used_for)}</dd>
+        </dl>` : `<h3>???</h3><span class="badge">#${it.id}</span>`);
+      lootGrid.appendChild(card);
     });
   }
 
@@ -1148,11 +1231,13 @@
     const row = (l, i, kind) => {
       const e = d.levels[l.id];
       const status = !e || !e.attempts ? 'not' : e.done ? 'done' : 'started';
-      const stuck = e && !e.done && e.attempts >= 5;
+      const quests = e && e.quests;
+      const stuck = e && !e.done && (quests ? quests.some((q) => !q.done && (q.attempts || 0) >= 5) : e.attempts >= 5);
+      const progress = quests && !e.done && e.attempts ? ` ${quests.filter((q) => q.done).length}/${quests.length}` : '';
       const title = pick(l.text).title;
       return `<tr class="${stuck ? 'stuck' : ''}">
         <td><b>${kind} ${i + 1}</b> · ${esc(title)}</td>
-        <td><span class="pill ${status}">${t('p_' + status)}</span></td>
+        <td><span class="pill ${status}">${t('p_' + status)}${progress}</span></td>
         <td>${e && e.done ? starsHTML(e.stars) : '—'}</td>
         <td class="num">${e ? e.attempts || 0 : 0}</td>
         <td class="num">${fmtTime(e && e.timeSec)}</td>

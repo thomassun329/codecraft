@@ -324,3 +324,14 @@ pre.example { margin: 4px 0 0; padding: 10px 12px; background: #101216; border: 
 .table-wrap td.sorted { background: rgba(255, 224, 138, .05); }
 .quest-onward { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .quest-onward:empty { display: none; }
+
+/* SQL chapters */
+.schema-table + .schema-table { margin-top: 10px; }
+.schema-table > b { display: block; margin-bottom: 4px; }
+.qdot:disabled { opacity: .5; cursor: not-allowed; }
+.chapter-card p { font-size: 15px; }
+.section-title { font: 15px/1.5 var(--pixel); text-align: center; margin: 34px 0 6px; }
+.mob-card.rarity-common { border-top-color: #9aa3b2; }
+.mob-card.rarity-uncommon { border-top-color: var(--grass); }
+.mob-card.rarity-rare { border-top-color: #4f8cff; }
+.mob-card.rarity-epic { border-top-color: var(--purple); }
