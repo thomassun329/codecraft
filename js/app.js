@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=31');
+      this.worker = new Worker('js/py-worker.js?v=33');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -509,9 +509,11 @@
       const w = view.world, kinds = new Set();
       w.grid.forEach((row) => row.forEach((c) => kinds.add(c)));
       if (w.targets.length) kinds.add('target');
-      const order = ['air', 'stone', 'diamond', 'tree', 'lava', 'water', 'bridge', 'wall', 'target', 'chest'];
+      if ((w.layout.hidden || []).length) kinds.add('mystery');
+      const order = ['mystery', 'air', 'stone', 'diamond', 'tree', 'lava', 'water', 'bridge', 'wall', 'target', 'chest'];
       const box = $('#legend');
       box.innerHTML = '';
+      if (kinds.has('lava') || kinds.has('water')) kinds.add('bridge');
       order.filter((k) => kinds.has(k)).forEach((k) => {
         const item = document.createElement('span');
         item.className = 'legend-item';

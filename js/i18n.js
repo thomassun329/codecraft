@@ -773,13 +773,14 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    leg_mystery: "? — unknown until you look with ahead()",
+    leg_bridge: "bridge — walk over it",
     leg_air: "floor — walk here",
     leg_stone: "stone — mine() it first",
     leg_diamond: "diamond — mine() it first",
     leg_tree: "tree — mine() it first",
     leg_lava: "lava — place() a bridge",
     leg_water: "water — place() a bridge",
-    leg_bridge: "bridge — walk here",
     leg_wall: "bedrock — can't pass",
     leg_target: "build() here",
     leg_chest: "chest — the goal",
@@ -819,13 +820,14 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    leg_mystery: "? — desconocido hasta que mires con ahead()",
+    leg_bridge: "puente — camina por encima",
     leg_air: "suelo — camina aquí",
     leg_stone: "piedra — primero mine()",
     leg_diamond: "diamante — primero mine()",
     leg_tree: "árbol — primero mine()",
     leg_lava: "lava — place() un puente",
     leg_water: "agua — place() un puente",
-    leg_bridge: "puente — camina aquí",
     leg_wall: "roca madre — no se pasa",
     leg_target: "build() aquí",
     leg_chest: "cofre — la meta",
@@ -865,13 +867,14 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    leg_mystery: "? — unbekannt, bis du mit ahead() nachschaust",
+    leg_bridge: "Brücke — darüber laufen",
     leg_air: "Boden — hier laufen",
     leg_stone: "Stein — zuerst mine()",
     leg_diamond: "Diamant — zuerst mine()",
     leg_tree: "Baum — zuerst mine()",
     leg_lava: "Lava — place() eine Brücke",
     leg_water: "Wasser — place() eine Brücke",
-    leg_bridge: "Brücke — hier laufen",
     leg_wall: "Grundgestein — kein Durchkommen",
     leg_target: "hier build()",
     leg_chest: "Truhe — das Ziel",

@@ -40,6 +40,9 @@
       this.particles = [];
       this.bubble = null;
       this.flash = null;
+      // Random blocks stay a mystery until the miner looks at or touches them.
+      this.hidden = new Set((world.layout.hidden || []).map(([x, y]) => x + ',' + y));
+      this.revealed = new Set();
       this.resize();
     }
 
@@ -77,11 +80,22 @@
       if (this.current) this.finishCurrent();
       while (this.queue.length) {
         const act = this.queue.shift();
+        this.reveal(act, this.world.front());
         this.apply(act);
         if (this.onAction) this.onAction(act, true);
       }
       this.pos = { x: this.world.x, y: this.world.y, fx: this.world.x, fy: this.world.y };
       if (this.onDone) { const d = this.onDone; this.onDone = null; d(); }
+    }
+
+    // ahead / mine / place / move touch the block in front; bumping or stepping reveals it too.
+    reveal(act, front) {
+      if (['ahead', 'mine', 'place', 'move', 'fatal'].includes(act.a)) this.revealed.add(front[0] + ',' + front[1]);
+    }
+
+    isMystery(x, y) {
+      const k = x + ',' + y;
+      return this.hidden && this.hidden.has(k) && !this.revealed.has(k);
     }
 
     apply(act) {
@@ -120,8 +134,9 @@
       const act = this.queue.shift();
       const from = [this.world.x, this.world.y];
       const front = this.world.front();
+      this.reveal(act, front);
       this.apply(act);
-      const base = act.a === 'move' ? 320 : act.a === 'fatal' ? 600 : act.a.startsWith('turn') ? 160 : 260;
+      const base = act.a === 'move' ? 320 : act.a === 'fatal' ? 600 : act.a.startsWith('turn') ? 160 : act.a === 'ahead' ? 140 : 260;
       this.current = { act, start: now, dur: base / (this.speed || 1), from };
       this.effects(act, front, now);
       if (this.onAction) this.onAction(act, false);
@@ -142,6 +157,9 @@
       if (act.a === 'build') {
         const bx = (this.world.x + 0.5) * t, by = (this.world.y + 0.5) * t;
         for (let i = 0; i < 8; i++) this.particles.push({ x: bx, y: by, vx: (Math.random() - 0.5) * 3, vy: -Math.random() * 3, life: 1, col: '#f2d15c' });
+      }
+      if (act.a === 'ahead') {
+        for (let i = 0; i < 6; i++) this.particles.push({ x: cx + (Math.random() - 0.5) * t * 0.6, y: cy + (Math.random() - 0.5) * t * 0.6, vx: 0, vy: -0.6, life: 0.7, col: '#fff7b0' });
       }
       if (act.a === 'say') this.bubble = { text: act.arg, until: now + 1800 };
       if (act.a === 'fatal') {
@@ -167,6 +185,7 @@
         if (c === 'lava') tex = TEX.lava[(lavaFrame + x + y) % 2];
         if (c === 'chest' || c === 'bridge') ctx.drawImage(c === 'bridge' ? TEX.lava[0] : TEX.air, x * t, y * t, t, t);
         ctx.drawImage(tex, x * t, y * t, t, t);
+        if (this.isMystery(x, y)) ctx.drawImage(TEX.mystery, x * t, y * t, t, t);
         if (w.floor[y][x] === 'planks') ctx.drawImage(TEX.planks, x * t, y * t, t, t);
         else if (w.isTarget(x, y)) {
           const a = 0.45 + 0.35 * Math.sin(now / 300 + x + y);
@@ -255,6 +274,7 @@
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     const tex = kind === 'lava' ? TEX.lava[0] : TEX[kind] || TEX.air;
+    if (kind === 'mystery') { ctx.drawImage(TEX.stone, 0, 0, size, size); ctx.drawImage(TEX.mystery, 0, 0, size, size); return c; }
     if (kind === 'chest' || kind === 'bridge') ctx.drawImage(kind === 'bridge' ? TEX.lava[0] : TEX.air, 0, 0, size, size);
     ctx.drawImage(tex, 0, 0, size, size);
     if (target) {

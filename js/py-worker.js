@@ -3,7 +3,7 @@
 // synchronously so sensors like ahead() see the real state; the page then
 // replays the recorded actions as an animation.
 importScripts('https://cdn.jsdelivr.net/npm/pyodide@0.26.4/pyodide.js');
-importScripts('world.js?v=9');
+importScripts('world.js?v=32');
 
 const MAX_STEPS = 3000;
 let py = null;
@@ -13,7 +13,7 @@ function act(name, arg) {
   steps++;
   if (steps > MAX_STEPS) return 'FATAL:steps';
   const r = world.do(name, arg == null ? undefined : arg);
-  if (name !== 'ahead') actions.push({ a: name, arg: arg == null ? undefined : String(arg), note: r.note });
+  actions.push({ a: name, arg: arg == null ? undefined : String(arg), note: r.note });
   if (r.fatal) {
     actions.push({ a: 'fatal', arg: r.fatal });
     return 'FATAL:' + r.fatal;

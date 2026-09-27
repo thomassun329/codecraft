@@ -113,7 +113,7 @@
         let cells;
         do { cells = Array.from({ length: 8 }, () => (rand() < 0.5 ? 'L' : '#')); }
         while (cells.filter((c) => c === 'L').length < 2 || cells.filter((c) => c === '#').length < 2);
-        return { dir: 'E', rows: tunnel(cells) };
+        return { dir: 'E', rows: tunnel(cells), hidden: cells.map((_, i) => [i + 2, 1]) };
       },
       check: (w) => onChest(w) ? { ok: true } : { ok: false, why: 'not_at_chest' },
       starter: { en: '# Stone or lava? Look before you step!\n', es: '# ¿Piedra o lava? ¡Mira antes de pisar!\n', de: '# Stein oder Lava? Schau, bevor du gehst!\n' },
@@ -163,7 +163,7 @@
         let cells;
         do { cells = Array.from({ length: n }, () => (rand() < 0.35 ? 'D' : '#')); }
         while (!cells.includes('D'));
-        return { dir: 'E', rows: tunnel(cells), diamonds: cells.filter((c) => c === 'D').length };
+        return { dir: 'E', rows: tunnel(cells), hidden: cells.map((_, i) => [i + 2, 1]), diamonds: cells.filter((c) => c === 'D').length };
       },
       check: (w) => {
         if (!atChest(w)) return { ok: false, why: 'not_at_chest' };

@@ -147,9 +147,25 @@
       ctx.fillStyle = '#3d2410'; ctx.fillRect(7, 7, 2, 1);
       return c;
     })();
+    // Drawn on top of lava: a narrow walkway with rails, lava visible above and below.
     T.bridge = (() => {
       const c = document.createElement('canvas'); c.width = c.height = 16;
-      planks(c.getContext('2d'), '#b0834a', '#7d5a2c');
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#b0834a'; ctx.fillRect(0, 4, 16, 8);
+      ctx.fillStyle = '#7d5a2c';
+      [3, 7, 11, 15].forEach((x) => ctx.fillRect(x, 4, 1, 8));
+      ctx.fillStyle = '#4a3218'; ctx.fillRect(0, 3, 16, 1); ctx.fillRect(0, 12, 16, 1);
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 13, 16, 1);
+      return c;
+    })();
+    // A mystery block: dark, with a question mark.
+    T.mystery = (() => {
+      const c = noiseTex(9, ['#3a3350', '#332d47', '#40395a', '#2d283f']);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#e0c6ff';
+      ['.xxxx.', 'x....x', '....x.', '...x..', '...x..', '......', '...x..'].forEach((row, y) =>
+        row.split('').forEach((ch, x) => { if (ch === 'x') ctx.fillRect(5 + x, 4 + y, 1, 1); }));
+      solidEdge(ctx);
       return c;
     })();
     T.planks = (() => {
