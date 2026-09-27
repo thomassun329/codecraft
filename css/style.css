@@ -322,3 +322,5 @@ pre.example { margin: 4px 0 0; padding: 10px 12px; background: #101216; border: 
 .th-sort:hover span, .th-sort.on span { color: var(--gold); }
 .th-sort:focus-visible { outline: 2px solid var(--gold); }
 .table-wrap td.sorted { background: rgba(255, 224, 138, .05); }
+.quest-onward { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.quest-onward:empty { display: none; }

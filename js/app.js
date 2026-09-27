@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=7');
+      this.worker = new Worker('js/py-worker.js?v=8');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -720,6 +720,24 @@
     });
     let saveT;
 
+    const nextLevel = SQL_LEVELS[idx + 1];
+    const onwardLink = () => (nextLevel && unlocked(SQL_LEVELS, idx + 1)
+      ? `<a class="btn" href="#/sql/${nextLevel.id}">${t('next')} →</a>`
+      : `<a class="btn" href="#/mobdex">📖 ${t('mobdex')}</a>`) + ` <a class="btn ghost" href="#/">${t('to_map')}</a>`;
+    // Where to go from here: the next unsolved quest, or on to the next level.
+    function onward() {
+      const n = E.quests.findIndex((x) => !x.done);
+      if (n !== -1 && n !== qi) return `<button class="btn" data-goq="${n}">${t('sql_next')} →</button>`;
+      if (n === -1) return onwardLink();
+      return '';
+    }
+
+    function goQuest(n) {
+      qi = n; hintIdx = 0;
+      $('#hintBox').hidden = true; $('#hintBtn').disabled = false; $('#fb').innerHTML = '';
+      drawQuest();
+    }
+
     function drawQuest() {
       const q = E.quests[qi];
       $('#quest').innerHTML = `
@@ -727,8 +745,9 @@
           <div class="quest-dots">${E.quests.map((x, i) => `<button class="qdot ${x.done ? 'done' : ''} ${i === qi ? 'on' : ''}" data-q="${i}">${x.done ? '✓' : i + 1}</button>`).join('')}</div>
         </div>
         <p>${tx.quests[qi]}</p>
-        ${q.done ? `<p class="ok">✅ ${t('quest_done')}</p>` : ''}`;
-      $$('[data-q]').forEach((b) => b.onclick = () => { qi = +b.dataset.q; hintIdx = 0; $('#hintBox').hidden = true; $('#hintBtn').disabled = false; $('#fb').innerHTML = ''; drawQuest(); });
+        ${q.done ? `<p class="ok">✅ ${t('quest_done')}</p><div class="quest-onward">${onward()}</div>` : ''}`;
+      $$('[data-goq]', $('#quest')).forEach((b) => b.onclick = () => goQuest(+b.dataset.goq));
+      $$('[data-q]').forEach((b) => b.onclick = () => goQuest(+b.dataset.q));
     }
     drawQuest();
 
@@ -901,7 +920,7 @@
       const nextQ = E.quests.findIndex((x) => !x.done);
       fb.innerHTML = `<div class="correct"><p class="ok">✅ ${t('sql_correct')} ${!wasDone && totalXP() > xpBefore ? `<b class="xp-gain">${t('xp_gain', { n: totalXP() - xpBefore })}</b>` : ''}</p>
         ${newMobs.length ? `<p>${t('sql_unlocked')}</p><div class="unlock-strip" id="strip"></div>` : ''}
-        ${nextQ !== -1 ? `<button class="btn" id="nextQ">${t('sql_next')} →</button>` : ''}</div>`;
+        <div class="quest-onward">${nextQ !== -1 ? `<button class="btn" id="nextQ">${t('sql_next')} →</button>` : onwardLink()}</div></div>`;
       if (newMobs.length) {
         const strip = $('#strip');
         newMobs.forEach((mid, i) => {
@@ -914,7 +933,7 @@
           strip.appendChild(card);
         });
       }
-      if ($('#nextQ')) $('#nextQ').onclick = () => { qi = nextQ; hintIdx = 0; $('#hintBox').hidden = true; $('#hintBtn').disabled = false; fb.innerHTML = ''; drawQuest(); };
+      if ($('#nextQ')) $('#nextQ').onclick = () => goQuest(nextQ);
       drawQuest();
       if (firstFinish) {
         const next = SQL_LEVELS[idx + 1];
