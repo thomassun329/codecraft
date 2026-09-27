@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=29');
+      this.worker = new Worker('js/py-worker.js?v=30');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -261,6 +261,8 @@
   }
 
   function openWelcome() {
+    // The home screen can be drawn several times at startup (cloud sign-in check); show one welcome only.
+    if (document.getElementById('welcomeModal')) return;
     const m = modal(`
       <div class="welcome-art" id="wArt"></div>
       <h2>${esc(t('welcome', { name: D().name === 'Miner' ? '' : D().name }).replace(/,\s*!/, '!').replace(/,\s*¡/, '¡'))}</h2>
@@ -269,6 +271,7 @@
       <p class="muted">${t('welcome_lang')}</p>
       <div class="lang big">${I18N.langs.map(([k]) => `<button data-wl="${k}" class="${I18N.lang === k ? 'on' : ''}">${{ en: '🇬🇧 English', es: '🇪🇸 Español', de: '🇩🇪 Deutsch' }[k]}</button>`).join('')}</div>
       <div class="modal-actions"><button class="btn big" data-close>${t('welcome_go')} ⛏️</button></div>`, { sticky: true, cls: 'center' });
+    m.id = 'welcomeModal';
     $('#wArt', m).appendChild(Sprites.artCanvas(Sprites.playerArt('none'), 96));
     const saveName = () => { const n = $('#wName', m).value.trim(); if (n) D().name = n; };
     $$('[data-wl]', m).forEach((b) => b.onclick = () => {
