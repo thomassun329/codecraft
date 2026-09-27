@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=33');
+      this.worker = new Worker('js/py-worker.js?v=35');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -801,6 +801,10 @@
     ]);
     if (has(code, /\bcase\b/i) && !has(code, /\bend\b/i)) return t('sqlerr_case_end');
     if (has(code, /\bcase\b/i) && (bare.match(/\bwhen\b/gi) || []).length !== (bare.match(/\bthen\b/gi) || []).length) return t('sqlerr_case_then');
+    // "ORDER BY DESC": SQLite reads the keyword as a column name.
+    if (/\border\s+by\s+(desc|asc)\b/i.test(bare)) return t('sqlerr_order_by_col');
+    if (/\bgroup\s+by\s+(having|order|limit)\b|\bgroup\s+by\s*$/i.test(bare)) return t('sqlerr_group_by_col');
+    if ((m = msg.match(/no such column: (\S+)/)) && SQL_WORDS.includes(m[1].toUpperCase())) return t('sqlerr_keyword_as_column', { x: esc(m[1]) });
     if ((m = msg.match(/no such column: (\S+)/))) {
       const full = m[1], parts = full.split('.'), col = parts.pop(), pre = parts.pop();
       if (pre && !SQL_TABLE_NAMES.includes(pre.toLowerCase()) && !aliases.has(pre.toLowerCase())) {

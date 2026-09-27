@@ -773,6 +773,9 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    sqlerr_order_by_col: "ORDER BY needs a column to sort by, before DESC or ASC: ORDER BY health DESC",
+    sqlerr_group_by_col: "GROUP BY needs a column to group by: GROUP BY biome",
+    sqlerr_keyword_as_column: "\"{x}\" is an SQL word, not a column — something is missing in front of it. Check that every part has what it needs, like ORDER BY health DESC.",
     leg_mystery: "? — unknown until you look with ahead()",
     leg_bridge: "bridge — walk over it",
     leg_air: "floor — walk here",
@@ -820,6 +823,9 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    sqlerr_order_by_col: "ORDER BY necesita una columna por la que ordenar, antes de DESC o ASC: ORDER BY health DESC",
+    sqlerr_group_by_col: "GROUP BY necesita una columna por la que agrupar: GROUP BY biome",
+    sqlerr_keyword_as_column: "\"{x}\" es una palabra de SQL, no una columna — falta algo delante. Revisa que cada parte tenga lo que necesita, como ORDER BY health DESC.",
     leg_mystery: "? — desconocido hasta que mires con ahead()",
     leg_bridge: "puente — camina por encima",
     leg_air: "suelo — camina aquí",
@@ -867,6 +873,9 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    sqlerr_order_by_col: "ORDER BY braucht eine Spalte, nach der sortiert wird, vor DESC oder ASC: ORDER BY health DESC",
+    sqlerr_group_by_col: "GROUP BY braucht eine Spalte, nach der gruppiert wird: GROUP BY biome",
+    sqlerr_keyword_as_column: "\"{x}\" ist ein SQL-Wort, keine Spalte — davor fehlt etwas. Prüf, ob jeder Teil hat, was er braucht, zum Beispiel ORDER BY health DESC.",
     leg_mystery: "? — unbekannt, bis du mit ahead() nachschaust",
     leg_bridge: "Brücke — darüber laufen",
     leg_air: "Boden — hier laufen",
