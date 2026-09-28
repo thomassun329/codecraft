@@ -68,7 +68,7 @@
     start() {
       this.ready = false;
       this.failed = false;
-      this.worker = new Worker('js/py-worker.js?v=35');
+      this.worker = new Worker('js/py-worker.js?v=36');
       this.worker.onmessage = (e) => {
         const m = e.data;
         if (m.type === 'ready') { this.ready = true; this.flush(); }
@@ -1491,6 +1491,16 @@
 
   // ---------------- boot ----------------
   I18N.set(D().lang);
+  // Coming back from an email link: Supabase puts the result in the URL hash.
+  const authHash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (authHash.get('error_code') || authHash.get('error')) {
+    history.replaceState(null, '', location.pathname + '#/');
+    setTimeout(() => modal(`<h2>📧 ${t('auth_link_title')}</h2><p>${t(authHash.get('error_code') === 'otp_expired' ? 'auth_link_expired' : 'auth_link_failed')}</p>
+      <div class="modal-actions"><button class="btn" data-close>OK</button></div>`), 300);
+  } else if (authHash.get('access_token')) {
+    // supabase-js reads the token itself; just leave the router a clean hash.
+    setTimeout(() => { if (/access_token/.test(location.hash)) history.replaceState(null, '', location.pathname + '#/'); render(); }, 1500);
+  }
   window.addEventListener('hashchange', render);
   Cloud.onChange(() => {
     const h = location.hash;

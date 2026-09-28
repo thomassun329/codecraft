@@ -84,7 +84,9 @@
     },
 
     async signUp(email, password) {
-      const { data, error } = await this.client.auth.signUp({ email, password });
+      // Send the confirmation link back to this page, not Supabase's default Site URL.
+      const emailRedirectTo = location.origin + location.pathname;
+      const { data, error } = await this.client.auth.signUp({ email, password, options: { emailRedirectTo } });
       if (error) throw error;
       return { needsConfirm: !data.session };
     },

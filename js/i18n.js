@@ -773,6 +773,9 @@
 
   // Free Lab.
   Object.assign(S.en, {
+    auth_link_title: "That email link didn't work",
+    auth_link_expired: "The confirmation link has expired or was already used (some email programs open links automatically to check them). No problem: click 💾 Save progress and just <b>log in</b> with your email and password — if that doesn't work, create the account again and click the new link right away.",
+    auth_link_failed: "Something went wrong with the email link. Click 💾 Save progress and try logging in with your email and password.",
     sqlerr_order_by_col: "ORDER BY needs a column to sort by, before DESC or ASC: ORDER BY health DESC",
     sqlerr_group_by_col: "GROUP BY needs a column to group by: GROUP BY biome",
     sqlerr_keyword_as_column: "\"{x}\" is an SQL word, not a column — something is missing in front of it. Check that every part has what it needs, like ORDER BY health DESC.",
@@ -823,6 +826,9 @@
     lab_idea_6: "Make your own table: CREATE TABLE pets (name TEXT, animal TEXT), then INSERT your pets!",
   });
   Object.assign(S.es, {
+    auth_link_title: "Ese enlace del correo no funcionó",
+    auth_link_expired: "El enlace de confirmación ha caducado o ya se usó (algunos programas de correo abren los enlaces automáticamente para revisarlos). No pasa nada: pulsa 💾 Guardar progreso e <b>inicia sesión</b> con tu email y contraseña — si no funciona, crea la cuenta otra vez y pulsa el nuevo enlace enseguida.",
+    auth_link_failed: "Algo salió mal con el enlace del correo. Pulsa 💾 Guardar progreso e intenta iniciar sesión con tu email y contraseña.",
     sqlerr_order_by_col: "ORDER BY necesita una columna por la que ordenar, antes de DESC o ASC: ORDER BY health DESC",
     sqlerr_group_by_col: "GROUP BY necesita una columna por la que agrupar: GROUP BY biome",
     sqlerr_keyword_as_column: "\"{x}\" es una palabra de SQL, no una columna — falta algo delante. Revisa que cada parte tenga lo que necesita, como ORDER BY health DESC.",
@@ -873,6 +879,9 @@
     lab_idea_6: "Crea tu propia tabla: CREATE TABLE pets (name TEXT, animal TEXT) y luego haz INSERT con tus mascotas.",
   });
   Object.assign(S.de, {
+    auth_link_title: "Der Link aus der E-Mail hat nicht geklappt",
+    auth_link_expired: "Der Bestätigungslink ist abgelaufen oder wurde schon benutzt (manche E-Mail-Programme öffnen Links automatisch, um sie zu prüfen). Kein Problem: Klick auf 💾 Fortschritt speichern und <b>melde dich an</b> mit E-Mail und Passwort — wenn das nicht klappt, leg das Konto noch einmal an und klick sofort auf den neuen Link.",
+    auth_link_failed: "Mit dem Link aus der E-Mail ist etwas schiefgelaufen. Klick auf 💾 Fortschritt speichern und versuch, dich mit E-Mail und Passwort anzumelden.",
     sqlerr_order_by_col: "ORDER BY braucht eine Spalte, nach der sortiert wird, vor DESC oder ASC: ORDER BY health DESC",
     sqlerr_group_by_col: "GROUP BY braucht eine Spalte, nach der gruppiert wird: GROUP BY biome",
     sqlerr_keyword_as_column: "\"{x}\" ist ein SQL-Wort, keine Spalte — davor fehlt etwas. Prüf, ob jeder Teil hat, was er braucht, zum Beispiel ORDER BY health DESC.",
